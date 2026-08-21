@@ -38,6 +38,42 @@ function Section({
   );
 }
 
+/**
+ * Tavus returns the perception analysis as a markdown-ish bullet list
+ * ("* **Heading:** body"). Split it back into labelled rows so it reads.
+ */
+function PerceptionAnalysis({ text }: { text: string }) {
+  const rows = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[*-]\s+/, "").replace(/\*\*/g, ""))
+    .map((line) => {
+      // Only a short leading fragment is a heading; a colon mid-sentence is not.
+      const separator = line.indexOf(": ");
+      if (separator < 1 || separator > 60) return { label: null, body: line };
+      return {
+        label: line.slice(0, separator),
+        body: line.slice(separator + 2),
+      };
+    });
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-line bg-surface p-6">
+      {rows.map((row, index) => (
+        <div key={index}>
+          {row.label && (
+            <div className="text-xs tracking-wide text-muted uppercase">
+              {row.label}
+            </div>
+          )}
+          <p className="prose-plain mt-1 leading-relaxed">{row.body}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Json({ value }: { value: unknown }) {
   return (
     <pre className="overflow-x-auto rounded-xl border border-line bg-surface p-4 font-mono text-xs leading-relaxed">
@@ -154,6 +190,21 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
           </div>
         ) : (
           <p className="text-muted">Nothing yet.</p>
+        )}
+      </Section>
+
+      <Section
+        title="Video analysis"
+        subtitle="Tavus's visual read of the caller during the conversation."
+      >
+        {typeof intake.perception_analysis?.analysis === "string" ? (
+          <PerceptionAnalysis text={intake.perception_analysis.analysis} />
+        ) : intake.perception_analysis ? (
+          <Json value={intake.perception_analysis} />
+        ) : (
+          <p className="text-muted">
+            No analysis received. It arrives shortly after the call ends.
+          </p>
         )}
       </Section>
 

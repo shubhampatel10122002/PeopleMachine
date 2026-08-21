@@ -10,10 +10,17 @@ type Conversation = {
 
 export function IntakeClient() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [callbackPhone, setCallbackPhone] = useState("");
   const [consented, setConsented] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ready =
+    firstName.trim().length > 0 &&
+    (callbackPhone.match(/\d/g) ?? []).length >= 7 &&
+    consented;
 
   async function start() {
     setBusy(true);
@@ -22,7 +29,11 @@ export function IntakeClient() {
       const response = await fetch("/api/intake/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ consent: true }),
+        body: JSON.stringify({
+          consent: true,
+          firstName: firstName.trim(),
+          callbackPhone: callbackPhone.trim(),
+        }),
       });
       const data = await response.json();
 
@@ -89,16 +100,50 @@ export function IntakeClient() {
   return (
     <div className="rounded-2xl border border-line bg-surface p-8">
       <h2 className="font-display text-2xl tracking-tight">Before we start</h2>
+      <p className="mt-2 text-sm text-muted">
+        Just two things, so we can reach you if the call drops.
+      </p>
 
-      <div className="mt-4 space-y-3 leading-relaxed text-muted">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="firstName" className="text-sm font-medium">
+            First name
+          </label>
+          <input
+            id="firstName"
+            name="firstName"
+            type="text"
+            autoComplete="given-name"
+            value={firstName}
+            onChange={(event) => setFirstName(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-line px-4 py-2.5 outline-none focus:border-brand"
+          />
+        </div>
+        <div>
+          <label htmlFor="callbackPhone" className="text-sm font-medium">
+            Phone number
+          </label>
+          <input
+            id="callbackPhone"
+            name="callbackPhone"
+            type="tel"
+            autoComplete="tel"
+            value={callbackPhone}
+            onChange={(event) => setCallbackPhone(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-line px-4 py-2.5 outline-none focus:border-brand"
+          />
+        </div>
+      </div>
+
+      <div className="mt-8 space-y-3 leading-relaxed text-muted">
         <p>
           You&rsquo;ll be speaking with Maya, an AI intake specialist. She is
           not a lawyer and cannot give legal advice.
         </p>
         <p>
-          Your conversation is transcribed and stored so our team and a
-          reviewing attorney can read what you shared. You can skip any question
-          or stop at any time.
+          Your conversation is transcribed and stored, and your video is
+          analysed during the call, so our team and a reviewing attorney can
+          read what you shared. You can skip any question or stop at any time.
         </p>
         <p>
           You&rsquo;ll need to allow camera and microphone access when your
@@ -115,8 +160,8 @@ export function IntakeClient() {
         />
         <span className="text-sm leading-relaxed">
           I understand that Maya is an AI assistant, that this conversation will
-          be transcribed and stored, that this is not legal advice, and that no
-          attorney&ndash;client relationship is created.
+          be transcribed, stored, and visually analysed, that this is not legal
+          advice, and that no attorney&ndash;client relationship is created.
         </span>
       </label>
 
@@ -129,7 +174,7 @@ export function IntakeClient() {
       <button
         type="button"
         onClick={start}
-        disabled={!consented || busy}
+        disabled={!ready || busy}
         className="mt-6 rounded-full bg-brand px-6 py-3 font-medium text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
       >
         {busy ? "Connecting…" : "Start the conversation"}

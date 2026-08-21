@@ -67,6 +67,8 @@ export type Intake = {
   incident_month_year: string | null;
   objectives: Record<string, Record<string, unknown>>;
   transcript: TranscriptTurn[] | null;
+  /** `properties` from Tavus's application.perception_analysis event. */
+  perception_analysis: { analysis?: string; [key: string]: unknown } | null;
   source: string;
   user_agent: string | null;
   reviewed: boolean;

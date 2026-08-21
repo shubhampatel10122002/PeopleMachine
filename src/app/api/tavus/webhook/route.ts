@@ -12,7 +12,8 @@ import { isIntakeField } from "@/lib/types";
  *
  * 2. Conversation callbacks (from the callback_url on conversation create):
  *    { conversation_id, event_type, message_type, properties, timestamp }
- *    — the one that matters is `application.transcription_ready`.
+ *    — notably `application.transcription_ready` and
+ *    `application.perception_analysis`.
  *
  * Everything is logged raw to `intake_events` before we interpret it, so a
  * shape we did not anticipate is still recoverable from the admin dashboard.
@@ -24,13 +25,24 @@ type WebhookBody = {
   output_variables?: Record<string, unknown>;
   event_type?: string;
   message_type?: string;
-  properties?: { transcript?: unknown; [key: string]: unknown };
+  webhook_url?: string;
+  properties?: { transcript?: unknown; analysis?: unknown; [key: string]: unknown };
 };
 
 function authorized(request: Request): boolean {
   const provided = new URL(request.url).searchParams.get("secret");
   if (!provided) return false;
   return safeEqual(provided, env.tavusWebhookSecret);
+}
+
+/**
+ * Tavus echoes the callback_url back in every payload, and ours carries the
+ * shared secret in the query string. Drop it before the payload is stored.
+ */
+function redact(body: WebhookBody): Record<string, unknown> {
+  const rest: Record<string, unknown> = { ...body };
+  delete rest.webhook_url;
+  return rest;
 }
 
 export async function POST(request: Request) {
@@ -62,7 +74,7 @@ export async function POST(request: Request) {
     event_type: body.event_type ?? null,
     message_type: body.message_type ?? null,
     objective_name: body.objective_name ?? null,
-    payload: body,
+    payload: redact(body),
   });
 
   if (!intake) {
@@ -98,6 +110,10 @@ export async function POST(request: Request) {
     if (!intake.ended_at) {
       updates.ended_at = new Date().toISOString();
     }
+  }
+
+  if (body.event_type === "application.perception_analysis" && body.properties) {
+    updates.perception_analysis = body.properties;
   }
 
   if (body.event_type === "system.shutdown" && !intake.ended_at) {

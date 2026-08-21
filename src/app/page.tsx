@@ -17,7 +17,7 @@ const steps = [
 ];
 
 const asked = [
-  "Your first name and a number to reach you",
+  "Your first name and a number to reach you, before the call starts",
   "What happened, in your own words",
   "Who was responsible — an agency, employer, or landlord",
   "The state and county where it happened",
@@ -51,7 +51,8 @@ export default function Home() {
               Start your intake
             </Link>
             <span className="text-sm text-muted">
-              About 10 minutes &middot; No cost &middot; Nothing to fill out
+              About 10 minutes &middot; No cost &middot; Two questions, then just
+              talking
             </span>
           </div>
         </section>
@@ -80,8 +81,9 @@ export default function Home() {
                 What we&rsquo;ll ask
               </h2>
               <p className="mt-4 leading-relaxed text-muted">
-                You can skip anything you are not comfortable answering, and
-                stop at any point. Maya will not push.
+                Once the conversation starts, you can skip anything you are not
+                comfortable answering, and stop at any point. Maya will not
+                push.
               </p>
               <ul className="mt-6 space-y-3">
                 {asked.map((item) => (
@@ -102,7 +104,9 @@ export default function Home() {
               <div className="mt-4 space-y-4 leading-relaxed text-muted">
                 <p>
                   Maya is an AI assistant, not a lawyer, and not a person. She
-                  is here to listen and take down what happened accurately.
+                  is here to listen and take down what happened accurately. The
+                  conversation is transcribed and the video is analysed, so our
+                  team can review it properly.
                 </p>
                 <p>
                   We are building our network of civil rights attorneys right

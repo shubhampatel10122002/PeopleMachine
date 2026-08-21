@@ -3,8 +3,12 @@ import { CONSENT_VERSION, env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createConversation } from "@/lib/tavus";
 
+function digitCount(value: string): number {
+  return (value.match(/\d/g) ?? []).length;
+}
+
 export async function POST(request: Request) {
-  let body: { consent?: unknown };
+  let body: { consent?: unknown; firstName?: unknown; callbackPhone?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -18,11 +22,32 @@ export async function POST(request: Request) {
     );
   }
 
+  const firstName =
+    typeof body.firstName === "string" ? body.firstName.trim() : "";
+  const callbackPhone =
+    typeof body.callbackPhone === "string" ? body.callbackPhone.trim() : "";
+
+  if (!firstName) {
+    return NextResponse.json(
+      { error: "Please tell us your first name." },
+      { status: 400 },
+    );
+  }
+
+  if (digitCount(callbackPhone) < 7) {
+    return NextResponse.json(
+      { error: "Please enter a phone number we can reach you on." },
+      { status: 400 },
+    );
+  }
+
   try {
     const startedAt = new Date();
-    const conversation = await createConversation(
-      `People Machine intake — ${startedAt.toISOString()}`,
-    );
+    const conversation = await createConversation({
+      conversationName: `People Machine intake — ${startedAt.toISOString()}`,
+      firstName,
+      callbackPhone,
+    });
 
     const { data, error } = await supabaseAdmin()
       .from("intakes")
@@ -32,6 +57,10 @@ export async function POST(request: Request) {
         pal_id: env.tavusPalId,
         face_id: env.tavusFaceId,
         status: "in_progress",
+        // Captured on the form, so the lead is usable even if they hang up
+        // before Maya gets to anything else.
+        first_name: firstName.slice(0, 120),
+        callback_phone: callbackPhone.slice(0, 64),
         consent_at: startedAt.toISOString(),
         consent_version: CONSENT_VERSION,
         started_at: startedAt.toISOString(),

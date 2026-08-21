@@ -10,18 +10,40 @@ export type CreatedConversation = {
 };
 
 /**
+ * The name and phone come from a public form and get embedded in Maya's
+ * context and greeting, so collapse them to a single short line first. This
+ * keeps a pasted paragraph — or an attempt at prompt injection — from
+ * becoming instructions.
+ */
+function sanitize(value: string, maxLength: number): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
+export type StartConversationInput = {
+  conversationName: string;
+  firstName: string;
+  callbackPhone: string;
+};
+
+/**
  * Starts a CVI conversation with Maya. The callback_url carries a shared
  * secret so our webhook can reject anything that did not come from this call.
+ *
+ * Name and phone are collected on the web form, so they are passed as context
+ * rather than asked for out loud — Maya's prompt tells her not to re-ask.
  *
  * Note: Maya's per-objective callbacks are configured on the objective set in
  * Tavus, not here — see README ("Tavus objective callbacks").
  */
 export async function createConversation(
-  conversationName: string,
+  input: StartConversationInput,
 ): Promise<CreatedConversation> {
   const callbackUrl = `${env.publicBaseUrl}/api/tavus/webhook?secret=${encodeURIComponent(
     env.tavusWebhookSecret,
   )}`;
+
+  const firstName = sanitize(input.firstName, 60);
+  const callbackPhone = sanitize(input.callbackPhone, 32);
 
   const response = await fetch(`${TAVUS_API}/conversations`, {
     method: "POST",
@@ -32,8 +54,16 @@ export async function createConversation(
     body: JSON.stringify({
       pal_id: env.tavusPalId,
       face_id: env.tavusFaceId,
-      conversation_name: conversationName,
+      conversation_name: input.conversationName,
       callback_url: callbackUrl,
+      conversational_context:
+        `The person you are speaking with is ${firstName}. ` +
+        `They gave their first name and callback number (${callbackPhone}) on the web form before this call, ` +
+        `so both are already on file. Do not ask for either one. ` +
+        `Greet ${firstName} by name and invite them to tell you what happened.`,
+      custom_greeting:
+        `Hi ${firstName}, I'm Maya. I help people here share what happened so the right attorney can take a look. ` +
+        `Whenever you're ready, tell me what happened — take your time.`,
       properties: {
         max_call_duration: 1800,
         participant_left_timeout: 60,
