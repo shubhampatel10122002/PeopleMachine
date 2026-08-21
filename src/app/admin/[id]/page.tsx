@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
+  capturedFieldCount,
   INTAKE_FIELDS,
   INTAKE_FIELD_LABELS,
   type Intake,
@@ -135,7 +136,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
 
       <Section
         title="Collected details"
-        subtitle="Variables Maya's objectives returned, mapped onto the intake record."
+        subtitle={`${capturedFieldCount(intake)} of ${INTAKE_FIELDS.length} fields captured. A field stays empty when its Tavus objective never completed.`}
       >
         <dl className="grid gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
           {INTAKE_FIELDS.filter((field) => field !== "narrative_summary").map(

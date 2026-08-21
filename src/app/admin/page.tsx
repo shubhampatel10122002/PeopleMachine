@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
-import type { Intake } from "@/lib/types";
+import { capturedFieldCount, INTAKE_FIELDS, type Intake } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +48,19 @@ async function loadIntakes(): Promise<{ intakes: Intake[]; error: string | null 
       error: thrown instanceof Error ? thrown.message : "Unknown error.",
     };
   }
+}
+
+/** Silent objective stalls show up here as a low count. */
+function FieldCount({ intake }: { intake: Intake }) {
+  const captured = capturedFieldCount(intake);
+  const total = INTAKE_FIELDS.length;
+  const incomplete = intake.status === "completed" && captured < total;
+
+  return (
+    <span className={incomplete ? "text-danger" : "text-muted"}>
+      {captured}/{total}
+    </span>
+  );
 }
 
 export default async function AdminPage() {
@@ -99,6 +112,7 @@ export default async function AdminPage() {
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Contact</th>
                 <th className="px-4 py-3 font-medium">Where</th>
+                <th className="px-4 py-3 font-medium">Captured</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
@@ -123,6 +137,9 @@ export default async function AdminPage() {
                     {[intake.incident_county, intake.incident_state]
                       .filter(Boolean)
                       .join(", ") || "—"}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <FieldCount intake={intake} />
                   </td>
                   <td className="px-4 py-3">
                     <StatusPill intake={intake} />

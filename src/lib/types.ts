@@ -33,6 +33,19 @@ export function isIntakeField(key: string): key is IntakeField {
   return (INTAKE_FIELDS as readonly string[]).includes(key);
 }
 
+/**
+ * How many of the nine fields actually hold a value. Tavus only fires an
+ * objective callback when that objective completes, so a stalled objective
+ * loses its fields silently — this makes that visible at a glance.
+ * 'unknown' and 'declined' count as captured: they are answers, not silence.
+ */
+export function capturedFieldCount(intake: Intake): number {
+  return INTAKE_FIELDS.filter((field) => {
+    const value = intake[field];
+    return typeof value === "string" && value.trim().length > 0;
+  }).length;
+}
+
 export type TranscriptTurn = {
   role: string;
   content: string;
