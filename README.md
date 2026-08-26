@@ -11,7 +11,7 @@ and the dashboard. Attorney accounts and matching come later.
 ```
 /intake  ──POST /api/intake/start──▶  Tavus: create conversation (Maya)
    │                                      │
-   └─ first name + phone ────────────────▶├─ conversation_url ──▶ iframe on /intake
+   └─ first name + phone ────────────────▶├─ conversation_url ──▶ Daily SDK join
       (context + greeting)                │
                                           └─ webhooks ──▶ /api/tavus/webhook ──▶ Supabase
                                                               │
@@ -37,8 +37,9 @@ which echoes our callback URL and therefore the shared secret.
 
 ## The Tavus agent
 
-Maya — Civil Rights Intake Specialist (`p7ac55cbadb2`, face `ra3a03647d46`),
-objective set `o9269328bfe16`. Her three objectives collect:
+Maya — Civil Rights Intake Specialist (`p7ac55cbadb2`, face `rf4e9d9790f0`
+"Anna - Professional"), objective set `o9269328bfe16`. Her three objectives
+collect:
 
 1. `gather_open_narrative` → `narrative_summary`
 2. `confirm_missing_details` → `responsible_party`, `incident_state`, `incident_county`, `incident_month_year`
@@ -56,6 +57,22 @@ canvas input card is used once, for the email address.
 **Changing the flow means changing two places.** If you add a variable to an
 objective in Tavus, add the matching column to `intakes` and the name to
 `INTAKE_FIELDS` in `src/lib/types.ts` — the webhook only maps names on that list.
+
+## Why the call is not a plain iframe
+
+`/intake` joins the room through the Daily SDK (`frame.join({ url, userName })`)
+rather than pointing an iframe at `conversation_url`. Pointing an iframe at the
+room shows Daily's own pre-join screen, which asks the caller for a name we
+already collected on the form — visible on iOS in particular.
+
+Two consequences worth keeping:
+
+- The join must stay **synchronous inside the click**. iOS Safari only grants
+  camera and mic on a real user gesture, so `@daily-co/daily-js` is preloaded
+  while the conversation is being created and the join button then calls
+  `join()` with no `await` in front of it.
+- That is why starting a call is two taps: one to create the conversation, one
+  to join. It was always two taps — the second used to be Daily's own screen.
 
 ## Database
 
@@ -78,7 +95,7 @@ Vercel → Settings → Environment Variables.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → `service_role` |
 | `PUBLIC_BASE_URL` | Your production origin, e.g. `https://people-machine.vercel.app` |
 | `ADMIN_PASSWORD` | You pick it — this is the only thing guarding the dashboard |
-| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Optional; defaults to Maya |
+| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Optional; defaults to Maya and Anna - Professional |
 
 `PUBLIC_BASE_URL` matters: without it, webhooks follow the per-deploy Vercel URL
 and preview deploys start receiving production callbacks.

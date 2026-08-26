@@ -18,9 +18,10 @@ export const env = {
   get tavusPalId() {
     return process.env.TAVUS_PAL_ID || "p7ac55cbadb2";
   },
-  /** Maya's default face. */
+  /** Anna - Professional (phoenix-4). Its own default voice is used, because
+   *  Maya's TTS layer is left on tavus-auto. */
   get tavusFaceId() {
-    return process.env.TAVUS_FACE_ID || "ra3a03647d46";
+    return process.env.TAVUS_FACE_ID || "rf4e9d9790f0";
   },
   /** Shared secret appended to every callback_url we hand Tavus. */
   get tavusWebhookSecret() {
