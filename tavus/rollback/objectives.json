@@ -1,0 +1,47 @@
+{
+  "_snapshot_note": "tavus_objective_get(objectives_id=o9269328bfe16) taken 2026-08-27, immediately before the civil-rights intake redesign. SECRET REDACTED: each node's callback_url ends with ?secret=${TAVUS_WEBHOOK_SECRET}. Substitute the live value from Vercel env before restoring. Never commit the resolved secret.",
+  "uuid": "o9269328bfe16",
+  "owner_id": 191877,
+  "name": "Builder Objectives 2026 08 19 15 20 55",
+  "allow_loops": false,
+  "data": [
+    {
+      "objective_name": "gather_open_narrative",
+      "objective_prompt": "Ask the one open question: 'tell me what happened, take your time.' Let the user speak without interruption. Do not provide follow-ups during their account. Complete when they finish.",
+      "confirmation_mode": "auto",
+      "output_variables": ["narrative_summary"],
+      "modality": "verbal",
+      "next_conditional_objectives": {},
+      "next_required_objective": "confirm_missing_details",
+      "callback_url": "https://people-machine.vercel.app/api/tavus/webhook?secret=${TAVUS_WEBHOOK_SECRET}"
+    },
+    {
+      "objective_name": "confirm_missing_details",
+      "objective_prompt": "Fill in four variables: responsible_party, incident_state, incident_county, and incident_month_year.\n\nFirst, take any of them the caller already gave during their story and record those values immediately, without asking again. Then ask only about the ones still empty, in one or two short questions.\n\nCompleting this objective is mandatory and must never stall. The moment a caller says they are unsure, do not know, or cannot remember, record the literal value 'unknown' for that variable right then and continue. If they refuse, record the literal value 'declined'. Ask for any single item at most twice, once plainly and once rephrased, and then record 'unknown' and move on. Before this objective ends, every one of the four variables must hold a value — either a real answer, 'unknown', or 'declined'. Never leave a variable empty, never wait for a better answer, and never move on to the next objective without assigning all four.\n\nDo not ask what category of case it is, whether the person responsible was a government official, about custody (unless they mentioned jail or prison), or whether they already have a lawyer (unless they bring it up).",
+      "confirmation_mode": "auto",
+      "output_variables": [
+        "responsible_party",
+        "incident_state",
+        "incident_county",
+        "incident_month_year"
+      ],
+      "modality": "verbal",
+      "next_conditional_objectives": {},
+      "next_required_objective": "final_confirmation",
+      "callback_url": "https://people-machine.vercel.app/api/tavus/webhook?secret=${TAVUS_WEBHOOK_SECRET}"
+    },
+    {
+      "objective_name": "final_confirmation",
+      "objective_prompt": "Capture two variables: email and best_contact_time. Ask for both together in one short question.\n\nRecord each value the moment the caller gives it. If they are unsure, record the literal value 'unknown'; if they refuse, record the literal value 'declined'. Ask at most twice for either item, then record 'unknown' and move on. Both variables must hold a value before this objective ends — never leave one empty and never wait for a better answer.\n\nOnce both are recorded, confirm the details back to the caller and say clearly that a person from the firm will follow up with them. Always run this objective, regardless of what was skipped earlier in the call.",
+      "confirmation_mode": "auto",
+      "output_variables": ["email", "best_contact_time"],
+      "modality": "verbal",
+      "next_conditional_objectives": {},
+      "next_required_objective": "",
+      "callback_url": "https://people-machine.vercel.app/api/tavus/webhook?secret=${TAVUS_WEBHOOK_SECRET}"
+    }
+  ],
+  "created_at": "2026-08-19 16:20:25.642243",
+  "updated_at": "2026-08-26 04:37:26.272787",
+  "is_deleted": false
+}

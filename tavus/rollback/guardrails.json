@@ -1,0 +1,144 @@
+{
+  "_snapshot_note": "The 10 guardrail records referenced by Maya's guardrail_ids, taken 2026-08-27 immediately before the civil-rights intake redesign. Only 5 distinct concerns are represented: an 8/19 copy carrying persona_refs:[Maya] and an 8/21 duplicate carrying none. All 10 were attached to the PAL. See ./README.md.",
+  "pal_guardrails_id": "g97a994bb8505",
+  "attached_guardrail_ids": [
+    "g5bb7f42c2f89",
+    "g3fdaa7fa6cee",
+    "gcae3bf374ac7",
+    "gf37fbf75593c",
+    "g7cb6a963a67b",
+    "g0d155bd817fe",
+    "g0dd7d59d3d4b",
+    "ge58edef81227",
+    "g4e8897c748cd",
+    "g24adf9c2ccb9"
+  ],
+  "guardrails": [
+    {
+      "uuid": "g0d155bd817fe",
+      "guardrail_name": "no_legal_advice_or_evaluation",
+      "guardrail_prompt": "Never state whether a case is strong, weak, or worth money. Do not provide legal advice, evaluate the merits of the user's claim, or mention whether a legal deadline has passed.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-19 15:20:55.912942",
+      "guardrail_type": "user",
+      "persona_refs": [{ "id": "p7ac55cbadb2", "name": "Maya" }]
+    },
+    {
+      "uuid": "g0dd7d59d3d4b",
+      "guardrail_name": "no_attorney_client_relationship",
+      "guardrail_prompt": "Clearly state that this conversation does not create an attorney-client relationship. Never suggest or imply that a lawyer has already accepted or taken the user's case.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-19 15:20:55.912942",
+      "guardrail_type": "user",
+      "persona_refs": [{ "id": "p7ac55cbadb2", "name": "Maya" }]
+    },
+    {
+      "uuid": "ge58edef81227",
+      "guardrail_name": "emergency_redirection",
+      "guardrail_prompt": "If the user describes immediate danger or a medical emergency, stop the intake process immediately and direct them to contact emergency services (e.g., 911) and a live person.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-19 15:20:55.912942",
+      "guardrail_type": "user",
+      "persona_refs": [{ "id": "p7ac55cbadb2", "name": "Maya" }]
+    },
+    {
+      "uuid": "g4e8897c748cd",
+      "guardrail_name": "no_graphic_details",
+      "guardrail_prompt": "Do not prompt the user for gruesome or overly graphic descriptions of their experience.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-19 15:20:55.912942",
+      "guardrail_type": "user",
+      "persona_refs": [{ "id": "p7ac55cbadb2", "name": "Maya" }]
+    },
+    {
+      "uuid": "g24adf9c2ccb9",
+      "guardrail_name": "ai_identity_disclosure",
+      "guardrail_prompt": "If the user asks if you are a real person, plainly state that you are an AI assistant for the firm and that a real person will follow up.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-19 15:20:55.912942",
+      "guardrail_type": "user",
+      "persona_refs": [{ "id": "p7ac55cbadb2", "name": "Maya" }]
+    },
+
+    {
+      "uuid": "g5bb7f42c2f89",
+      "_duplicate_of": "g0d155bd817fe",
+      "guardrail_name": "no_legal_advice_or_evaluation",
+      "guardrail_prompt": "Never state whether a case is strong, weak, or worth money. Do not provide legal advice, evaluate the merits of the user's claim, or mention whether a legal deadline has passed.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-21 00:27:18.468117",
+      "guardrail_type": "user",
+      "persona_refs": []
+    },
+    {
+      "uuid": "g3fdaa7fa6cee",
+      "_duplicate_of": "g0dd7d59d3d4b",
+      "guardrail_name": "no_attorney_client_relationship",
+      "guardrail_prompt": "Clearly state that this conversation does not create an attorney-client relationship. Never suggest or imply that a lawyer has already accepted or taken the user's case.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-21 00:27:18.468117",
+      "guardrail_type": "user",
+      "persona_refs": []
+    },
+    {
+      "uuid": "gcae3bf374ac7",
+      "_duplicate_of": "ge58edef81227",
+      "guardrail_name": "emergency_redirection",
+      "guardrail_prompt": "If the user describes immediate danger or a medical emergency, stop the intake process immediately and direct them to contact emergency services (e.g., 911) and a live person.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-21 00:27:18.468117",
+      "guardrail_type": "user",
+      "persona_refs": []
+    },
+    {
+      "uuid": "gf37fbf75593c",
+      "_duplicate_of": "g4e8897c748cd",
+      "guardrail_name": "no_graphic_details",
+      "guardrail_prompt": "Do not prompt the user for gruesome or overly graphic descriptions of their experience.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-21 00:27:18.468117",
+      "guardrail_type": "user",
+      "persona_refs": []
+    },
+    {
+      "uuid": "g7cb6a963a67b",
+      "_duplicate_of": "g24adf9c2ccb9",
+      "guardrail_name": "ai_identity_disclosure",
+      "guardrail_prompt": "If the user asks if you are a real person, plainly state that you are an AI assistant for the firm and that a real person will follow up.",
+      "modality": "verbal",
+      "callback_url": "",
+      "app_message": true,
+      "tags": [],
+      "created_at": "2026-08-21 00:27:18.468117",
+      "guardrail_type": "user",
+      "persona_refs": []
+    }
+  ]
+}
