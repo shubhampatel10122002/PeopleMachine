@@ -24,39 +24,76 @@ leaves a usable lead. They are passed to Tavus as `conversational_context` plus
 a per-conversation `custom_greeting`, so Maya opens with the person's name and
 goes straight to their story.
 
-Three kinds of webhook arrive at the same endpoint:
+Four kinds of webhook arrive at the same endpoint:
 
 | Payload | What we store |
 | --- | --- |
 | `{ conversation_id, objective_name, output_variables }` | Each variable onto its column on `intakes`, plus the raw object under `objectives` |
 | `application.transcription_ready` | Full `transcript`; marks the intake `completed` |
 | `application.perception_analysis` | Tavus's visual read of the caller, into `perception_analysis` |
+| A guardrail fire | Only `safety_flag_and_continue` has a `callback_url`. Sets `safety_flag` and forces `priority_tier` to `p1` |
+
+That last row is the reason the safety guardrail has a callback at all:
+guardrails otherwise publish as app messages on the Daily data channel, which
+never reach the server. A browser listener would lose the signal on any client
+that is not watching for it.
+
+Objective callbacks **fire repeatedly** as an objective refines its variables,
+so the webhook merges rather than assigns: a later fire carrying `unknown` or
+`declined` can never overwrite an answer we already hold.
 
 Every payload is also written verbatim to `intake_events` — minus `webhook_url`,
 which echoes our callback URL and therefore the shared secret.
 
 ## The Tavus agent
 
-Maya — Civil Rights Intake Specialist (`p7ac55cbadb2`, face `rf4e9d9790f0`
-"Anna - Professional"), objective set `o9269328bfe16`. Her three objectives
-collect:
+Maya — Civil Rights Intake v2 (`p93c8a932419`, face `rf4e9d9790f0` "Anna -
+Professional"), objective set `o7fb756385afe`. **Full detail, and the reasoning
+behind every choice, is in [`tavus/README.md`](tavus/README.md)** — read that
+before touching a prompt.
 
-1. `gather_open_narrative` → `narrative_summary`
-2. `confirm_missing_details` → `responsible_party`, `incident_state`, `incident_county`, `incident_month_year`
-3. `final_confirmation` → `email`, `best_contact_time`
+The short version. She opens with one question ("tell me what happened, take
+your time"), classifies silently from the narrative rather than asking the
+caller to name their category, banks a routable lead in the first ~90 seconds,
+then runs one of seven branches and closes. She never declines a matter, never
+mentions 911 or any crisis resource, and never quotes a callback timeframe.
 
-Every one of those names is a column on `intakes`. A caller who refuses a
-question is recorded as the literal string `declined`; one who does not know is
-recorded as `unknown`.
+```
+open_narrative → tier1_capture ⇢ one of {employment, institutional_access,
+  police_conduct, custody_confinement, sexual_violence, injury, general_matter}
+  → wrap_up
+```
 
-`first_name` and `callback_phone` are also columns, but they are written at
-`/api/intake/start` from the form rather than by a callback. Maya's system
-prompt tells her both are already on file and not to ask for either. Her magic
-canvas input card is used once, for the email address.
+Twelve matter buckets are recorded as data (`matter_bucket`); only seven are
+branch targets, because a twelve-way plain-English routing decision is where
+misrouting happens.
 
 **Changing the flow means changing two places.** If you add a variable to an
 objective in Tavus, add the matching column to `intakes` and the name to
-`INTAKE_FIELDS` in `src/lib/types.ts` — the webhook only maps names on that list.
+`INTAKE_SPINE_FIELDS` or `INTAKE_BRANCH_FIELDS` in `src/lib/types.ts` — the
+webhook only maps names on that list. The split matters: spine fields are asked
+on every call and an empty one is signal, while branch fields are null on nearly
+every row by design and must never count toward completeness.
+
+`first_name` and `callback_phone` are written at `/api/intake/start` from the
+form rather than by a callback. Maya's prompt tells her both are already on file
+and not to ask for either.
+
+### Post-call extraction is not built
+
+The agent captures a coarse routing tuple live; fine-grained classification,
+dates as `{raw, iso, precision}`, and per-field provenance are meant to come
+from a post-call extractor running over the merged bundle. That bundle is
+already durable — `transcript`, `perception_analysis`, `objectives`, and
+`intake_events` — so nothing is being lost in the meantime, it just is not
+structured yet.
+
+Two facts that make this safe, both measured rather than assumed:
+`application.transcription_ready` arrived **1–5 seconds after call end on every
+call**, including a 36-second one with four turns; and perception **never**
+reaches the transcript, arriving only as the end-of-call
+`perception_analysis.analysis` blob. Extraction must read the bundle, not the
+transcript alone, or it silently drops the safety signal.
 
 ## Why the call is not a plain iframe
 
@@ -95,7 +132,7 @@ Vercel → Settings → Environment Variables.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → `service_role` |
 | `PUBLIC_BASE_URL` | Your production origin, e.g. `https://people-machine.vercel.app` |
 | `ADMIN_PASSWORD` | You pick it — this is the only thing guarding the dashboard |
-| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Optional; defaults to Maya and Anna - Professional |
+| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Optional; defaults to Maya v2 (`p93c8a932419`) and Anna - Professional |
 
 `PUBLIC_BASE_URL` matters: without it, webhooks follow the per-deploy Vercel URL
 and preview deploys start receiving production callbacks.

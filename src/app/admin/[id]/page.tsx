@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
-  capturedFieldCount,
-  INTAKE_FIELDS,
+  capturedSpineCount,
+  INTAKE_SPINE_FIELDS,
   INTAKE_FIELD_LABELS,
+  populatedBranchFields,
+  populatedLegacyFields,
   type Intake,
   type IntakeEvent,
   type TranscriptTurn,
@@ -102,6 +104,8 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
     ? intake.transcript
     : [];
   const narrative = intake.narrative_summary;
+  const branchFields = populatedBranchFields(intake);
+  const legacyFields = populatedLegacyFields(intake);
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
@@ -136,23 +140,59 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
 
       <Section
         title="Collected details"
-        subtitle={`${capturedFieldCount(intake)} of ${INTAKE_FIELDS.length} fields captured. A field stays empty when its Tavus objective never completed.`}
+        subtitle={`${capturedSpineCount(intake)} of ${INTAKE_SPINE_FIELDS.length} asked on every call. A field stays empty when the call ended before its objective fired, or the caller declined.`}
       >
         <dl className="grid gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
-          {INTAKE_FIELDS.filter((field) => field !== "narrative_summary").map(
-            (field) => (
+          {INTAKE_SPINE_FIELDS.filter(
+            (field) => field !== "narrative_summary",
+          ).map((field) => (
+            <div key={field}>
+              <dt className="text-xs tracking-wide text-muted uppercase">
+                {INTAKE_FIELD_LABELS[field]}
+              </dt>
+              <dd className="mt-1">
+                {intake[field] ?? <span className="text-muted">—</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
+
+      {branchFields.length > 0 && (
+        <Section
+          title="Branch detail"
+          subtitle="Only the branch this call actually ran. Every other branch's fields are empty by design, so they are not listed."
+        >
+          <dl className="grid gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
+            {branchFields.map((field) => (
               <div key={field}>
                 <dt className="text-xs tracking-wide text-muted uppercase">
                   {INTAKE_FIELD_LABELS[field]}
                 </dt>
-                <dd className="mt-1">
-                  {intake[field] ?? <span className="text-muted">—</span>}
-                </dd>
+                <dd className="mt-1">{intake[field]}</dd>
               </div>
-            ),
-          )}
-        </dl>
-      </Section>
+            ))}
+          </dl>
+        </Section>
+      )}
+
+      {legacyFields.length > 0 && (
+        <Section
+          title="Legacy fields"
+          subtitle="Written by the pre-redesign objective set. Kept so older intakes still read in full."
+        >
+          <dl className="grid gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
+            {legacyFields.map((field) => (
+              <div key={field}>
+                <dt className="text-xs tracking-wide text-muted uppercase">
+                  {INTAKE_FIELD_LABELS[field]}
+                </dt>
+                <dd className="mt-1">{intake[field]}</dd>
+              </div>
+            ))}
+          </dl>
+        </Section>
+      )}
 
       <Section title="What happened">
         {narrative ? (
@@ -162,7 +202,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
         ) : (
           <p className="text-muted">
             No narrative captured yet. It arrives when the
-            <code className="mx-1 font-mono text-xs">gather_open_narrative</code>
+            <code className="mx-1 font-mono text-xs">open_narrative</code>
             objective completes.
           </p>
         )}

@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
-import { capturedFieldCount, INTAKE_FIELDS, type Intake } from "@/lib/types";
+import {
+  capturedSpineCount,
+  INTAKE_SPINE_FIELDS,
+  type Intake,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -50,10 +54,14 @@ async function loadIntakes(): Promise<{ intakes: Intake[]; error: string | null 
   }
 }
 
-/** Silent objective stalls show up here as a low count. */
+/**
+ * Silent objective stalls show up here as a low count. Counts the spine only:
+ * branch fields are null on nearly every row by design, so including them
+ * would paint every intake red and the signal would be worthless.
+ */
 function FieldCount({ intake }: { intake: Intake }) {
-  const captured = capturedFieldCount(intake);
-  const total = INTAKE_FIELDS.length;
+  const captured = capturedSpineCount(intake);
+  const total = INTAKE_SPINE_FIELDS.length;
   const incomplete = intake.status === "completed" && captured < total;
 
   return (
