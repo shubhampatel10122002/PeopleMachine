@@ -145,6 +145,33 @@ export function isNonAnswer(value: string): boolean {
   return NON_ANSWERS.has(value.trim().toLowerCase());
 }
 
+/**
+ * Whether an incoming objective value should replace what we already hold.
+ *
+ * Objective callbacks fire repeatedly as an objective refines its variables,
+ * not once when it completes: one observed conversation fired the same
+ * objective three times with three different summaries, and moved a date from
+ * 'unknown' to 'two days ago' across two fires. That repetition is what makes
+ * the live Tier 1 write work — a call that dies at minute three still leaves a
+ * routable lead — and it is also how a good answer gets clobbered.
+ *
+ * So a later fire may only replace what we hold if it carries strictly more
+ * information: a real answer beats a placeholder, and nothing beats a real
+ * answer except a different real answer.
+ */
+export function shouldOverwriteField(
+  current: unknown,
+  incoming: string,
+): boolean {
+  if (!incoming.trim()) return false;
+
+  const held = typeof current === "string" ? current.trim() : "";
+  if (!held) return true;
+
+  if (isNonAnswer(incoming)) return false;
+  return isNonAnswer(held) || held !== incoming;
+}
+
 export type TranscriptTurn = {
   role: string;
   content: string;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
 import { safeEqual } from "@/lib/admin-auth";
-import { isIntakeField, isNonAnswer, type Intake } from "@/lib/types";
+import { isIntakeField, shouldOverwriteField, type Intake } from "@/lib/types";
 
 /**
  * Single endpoint for everything Tavus sends us. Three payload shapes arrive:
@@ -55,30 +55,6 @@ function redact(body: WebhookBody): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...body };
   delete rest.webhook_url;
   return rest;
-}
-
-/**
- * Objective callbacks fire repeatedly as an objective refines its variables,
- * not once when it completes: one observed conversation fired
- * `gather_open_narrative` three times with three different summaries, and
- * moved `incident_month_year` from 'unknown' to 'two days ago' across two
- * fires of the same objective.
- *
- * That is what makes the live Tier 1 write work, and it is also how a good
- * answer gets clobbered. A later fire may only replace what we already hold if
- * it carries strictly more information: a real answer beats 'unknown', and
- * nothing beats a real answer except another real answer.
- */
-function shouldOverwrite(current: unknown, incoming: string): boolean {
-  if (!incoming.trim()) return false;
-
-  const held = typeof current === "string" ? current.trim() : "";
-  if (!held) return true;
-
-  // A real answer replaces a placeholder; a placeholder never replaces a real
-  // answer, and never replaces another placeholder (avoids pointless writes).
-  if (isNonAnswer(incoming)) return false;
-  return isNonAnswer(held) || held !== incoming;
 }
 
 /** A guardrail fire, whichever shape Tavus sends it in. */
@@ -148,7 +124,7 @@ export async function POST(request: Request) {
 
       const incoming =
         typeof value === "string" ? value.trim() : JSON.stringify(value);
-      if (shouldOverwrite(intake[key], incoming)) {
+      if (shouldOverwriteField(intake[key], incoming)) {
         updates[key] = incoming;
       }
     }
