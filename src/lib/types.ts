@@ -1,18 +1,67 @@
 /**
- * The variables Maya's objective set (o9269328bfe16) emits. Each objective
- * posts `{ conversation_id, objective_name, output_variables }` to our webhook,
- * and every one of these names maps 1:1 onto a column on `intakes`.
+ * The variables Maya's objective set (crv-intake-v2, `o7fb756385afe`) emits.
+ * Each objective posts `{ conversation_id, objective_name, output_variables }`
+ * to our webhook, and every name below maps 1:1 onto a column on `intakes`.
+ *
+ * Split into two groups because they mean different things when empty.
  */
-export const INTAKE_FIELDS = [
+
+/**
+ * Asked on every call, whatever the matter is. `first_name` and
+ * `callback_phone` come from the web form rather than an objective. An empty
+ * spine field means the call ended early or the caller declined — it is signal.
+ */
+export const INTAKE_SPINE_FIELDS = [
   "first_name",
   "callback_phone",
   "email",
   "best_contact_time",
+  "voicemail_text_safe",
   "narrative_summary",
+  "subject_one_line",
+  "matter_bucket",
+  "matter_venue",
+  "protected_basis",
+  "conduct_types",
+  "urgency",
+  "incident_date",
+  "opposing_party",
+  "government_employer",
+  "municipal_defendant",
+  "prior_filing",
+  "priority_tier",
+  "safety_flag",
+  "branch_summary",
+] as const;
+
+/**
+ * Emitted by one branch each. A call runs a single branch, so these are null by
+ * design on most rows — `injury_type` is empty on every employment matter. Never
+ * count these toward completeness.
+ */
+export const INTAKE_BRANCH_FIELDS = [
+  "employer_headcount_band",
+  "incident_borough",
+  "incident_county",
+  "facility_name",
+  "facility_type",
+  "injury_type",
+  "treatment_status",
+  "insurer_identified",
+  "liable_party_type",
+] as const;
+
+/** Written by the pre-redesign objective set. Read-only for old rows. */
+export const INTAKE_LEGACY_FIELDS = [
   "responsible_party",
   "incident_state",
-  "incident_county",
   "incident_month_year",
+] as const;
+
+export const INTAKE_FIELDS = [
+  ...INTAKE_SPINE_FIELDS,
+  ...INTAKE_BRANCH_FIELDS,
+  ...INTAKE_LEGACY_FIELDS,
 ] as const;
 
 export type IntakeField = (typeof INTAKE_FIELDS)[number];
@@ -22,28 +71,78 @@ export const INTAKE_FIELD_LABELS: Record<IntakeField, string> = {
   callback_phone: "Callback phone",
   email: "Email",
   best_contact_time: "Best time to reach",
+  voicemail_text_safe: "Voicemail / text safe",
   narrative_summary: "What happened",
-  responsible_party: "Responsible party",
-  incident_state: "State",
+  subject_one_line: "Subject",
+  matter_bucket: "Matter type",
+  matter_venue: "Venue",
+  protected_basis: "Protected basis",
+  conduct_types: "Conduct",
+  urgency: "Urgency",
+  incident_date: "When it happened",
+  opposing_party: "Other side",
+  government_employer: "Government employer",
+  municipal_defendant: "Municipal defendant",
+  prior_filing: "Already filed",
+  priority_tier: "Priority",
+  safety_flag: "Safety flag",
+  branch_summary: "Branch detail",
+
+  employer_headcount_band: "Employer size",
+  incident_borough: "Borough",
   incident_county: "County",
-  incident_month_year: "When it happened",
+  facility_name: "Facility",
+  facility_type: "Facility type",
+  injury_type: "Injury",
+  treatment_status: "Treatment status",
+  insurer_identified: "Insurer contact",
+  liable_party_type: "Liable party",
+
+  responsible_party: "Responsible party (legacy)",
+  incident_state: "State (legacy)",
+  incident_month_year: "When it happened (legacy)",
 };
 
 export function isIntakeField(key: string): key is IntakeField {
   return (INTAKE_FIELDS as readonly string[]).includes(key);
 }
 
+function isFilled(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 /**
- * How many of the nine fields actually hold a value. Tavus only fires an
- * objective callback when that objective completes, so a stalled objective
- * loses its fields silently — this makes that visible at a glance.
- * 'unknown' and 'declined' count as captured: they are answers, not silence.
+ * How much of the spine a call actually captured. Tavus only fires an objective
+ * callback when that objective produces variables, so a call that died early
+ * shows up here as a low count.
+ *
+ * Counts the spine only. Branch fields are null on nearly every row by design,
+ * so including them would mark every intake incomplete and the signal would be
+ * worthless. 'unknown' and 'declined' count as captured — they are answers.
  */
-export function capturedFieldCount(intake: Intake): number {
-  return INTAKE_FIELDS.filter((field) => {
-    const value = intake[field];
-    return typeof value === "string" && value.trim().length > 0;
-  }).length;
+export function capturedSpineCount(intake: Intake): number {
+  return INTAKE_SPINE_FIELDS.filter((field) => isFilled(intake[field])).length;
+}
+
+/** Branch fields that this particular call actually produced. */
+export function populatedBranchFields(intake: Intake): IntakeField[] {
+  return INTAKE_BRANCH_FIELDS.filter((field) => isFilled(intake[field]));
+}
+
+/** Legacy fields, shown only on rows old enough to have them. */
+export function populatedLegacyFields(intake: Intake): IntakeField[] {
+  return INTAKE_LEGACY_FIELDS.filter((field) => isFilled(intake[field]));
+}
+
+/**
+ * Values that mean "we asked and got nothing". A later objective callback
+ * carrying one of these must never overwrite a real answer — see the merge
+ * rule in the webhook route.
+ */
+export const NON_ANSWERS = new Set(["unknown", "declined", "n/a", "none given"]);
+
+export function isNonAnswer(value: string): boolean {
+  return NON_ANSWERS.has(value.trim().toLowerCase());
 }
 
 export type TranscriptTurn = {
@@ -69,15 +168,6 @@ export type Intake = {
   started_at: string;
   ended_at: string | null;
   transcript_ready_at: string | null;
-  first_name: string | null;
-  callback_phone: string | null;
-  email: string | null;
-  best_contact_time: string | null;
-  narrative_summary: string | null;
-  responsible_party: string | null;
-  incident_state: string | null;
-  incident_county: string | null;
-  incident_month_year: string | null;
   objectives: Record<string, Record<string, unknown>>;
   transcript: TranscriptTurn[] | null;
   /** `properties` from Tavus's application.perception_analysis event. */
@@ -86,7 +176,7 @@ export type Intake = {
   user_agent: string | null;
   reviewed: boolean;
   admin_notes: string | null;
-};
+} & { [K in IntakeField]: string | null };
 
 export type IntakeEvent = {
   id: number;
