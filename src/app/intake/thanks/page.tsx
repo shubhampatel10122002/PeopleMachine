@@ -17,7 +17,7 @@ export default function ThanksPage() {
         <div className="mt-6 space-y-4 leading-relaxed text-muted">
           <p>
             What you shared has been saved and is with our team. Someone will
-            follow up at the number and email you gave Maya.
+            follow up at the number and email you gave us.
           </p>
           <p>
             If your situation changes, or you remember something important, you

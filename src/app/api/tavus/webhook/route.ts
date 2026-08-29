@@ -7,7 +7,7 @@ import { isIntakeField, shouldOverwriteField, type Intake } from "@/lib/types";
 /**
  * Single endpoint for everything Tavus sends us. Three payload shapes arrive:
  *
- * 1. Objective callbacks (configured per objective on Maya's objective set):
+ * 1. Objective callbacks (configured per objective on Ethan's objective set):
  *    { conversation_id, objective_name, output_variables: { ... } }
  *
  * 2. Conversation callbacks (from the callback_url on conversation create):

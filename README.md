@@ -9,20 +9,28 @@ and the dashboard. Attorney accounts and matching come later.
 ## How it works
 
 ```
-/intake  ──POST /api/intake/start──▶  Tavus: create conversation (Maya)
+/intake  ──POST /api/intake/start──▶  Tavus: create conversation (Ethan)
    │                                      │
-   └─ first name + phone ────────────────▶├─ conversation_url ──▶ Daily SDK join
+   └─ first name + phone + email ────────▶├─ conversation_url ──▶ Daily SDK join
       (context + greeting)                │
                                           └─ webhooks ──▶ /api/tavus/webhook ──▶ Supabase
                                                               │
                                                             /admin
 ```
 
-Name and phone are collected on the page **before** the call, not by Maya. Typed
-contact details beat transcribed ones, and it means an abandoned call still
-leaves a usable lead. They are passed to Tavus as `conversational_context` plus
-a per-conversation `custom_greeting`, so Maya opens with the person's name and
-goes straight to their story.
+Name, phone and email are collected on the page **before** the call, not by
+Ethan. Typed contact details beat transcribed ones, and it means an abandoned
+call still leaves a usable lead. They are passed to Tavus as
+`conversational_context` plus a per-conversation `custom_greeting`, so Ethan
+opens with the person's name and goes straight to their story.
+
+Email moved onto the form for a second reason. It used to be asked at the close
+and answered through a Magic Canvas input card, and that card never rendered
+here: the call is joined with Daily's prebuilt iframe, and Magic Canvas is drawn
+by Tavus's own embed or its React components, neither of which is in the page.
+The card showed in PAL Maker's preview and nowhere else. Rather than rebuild the
+call UI around it, the address is typed up front with the rest of the contact
+details, and the capability is detached from both PALs.
 
 Four kinds of webhook arrive at the same endpoint:
 
@@ -47,15 +55,18 @@ which echoes our callback URL and therefore the shared secret.
 
 ## The Tavus agent
 
-Maya — Civil Rights Intake v2 (`p93c8a932419`, face `rf4e9d9790f0` "Anna -
-Professional"), objective set `o7fb756385afe`. **Full detail, and the reasoning
-behind every choice, is in [`tavus/README.md`](tavus/README.md)** — read that
-before touching a prompt.
+Ethan. Production serves PAL `p7ac55cbadb2` with face `rf4703150052` ("Charlie")
+and objective set `ofc70727fb48e`, all three set via `TAVUS_PAL_ID` /
+`TAVUS_FACE_ID` in Vercel. A second PAL, `p93c8a932419`, is the fallback baked
+into `src/lib/env.ts` and carries the same prompt and objective tree. **Full
+detail, and the reasoning behind every choice, is in
+[`tavus/README.md`](tavus/README.md)** — read that before touching a prompt, and
+note that a prompt change has to be made on both PALs.
 
-The short version. She opens with one question ("tell me what happened, take
+The short version. He opens with one question ("tell me what happened, take
 your time"), classifies silently from the narrative rather than asking the
 caller to name their category, banks a routable lead in the first ~90 seconds,
-then runs one of seven branches and closes. She never declines a matter, never
+then runs one of seven branches and closes. He never declines a matter, never
 mentions 911 or any crisis resource, and never quotes a callback timeframe.
 
 ```
@@ -75,9 +86,10 @@ webhook only maps names on that list. The split matters: spine fields are asked
 on every call and an empty one is signal, while branch fields are null on nearly
 every row by design and must never count toward completeness.
 
-`first_name` and `callback_phone` are written at `/api/intake/start` from the
-form rather than by a callback. Maya's prompt tells her both are already on file
-and not to ask for either.
+`first_name`, `callback_phone` and `email` are written at `/api/intake/start`
+from the form rather than by a callback. Ethan's prompt tells him all three are
+already on file and not to ask for any of them, and `email` is no longer an
+output variable on `wrap_up`, so no callback can overwrite the typed address.
 
 ### Post-call extraction is not built
 
@@ -132,7 +144,7 @@ Vercel → Settings → Environment Variables.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → `service_role` |
 | `PUBLIC_BASE_URL` | Your production origin, e.g. `https://people-machine.vercel.app` |
 | `ADMIN_PASSWORD` | You pick it — this is the only thing guarding the dashboard |
-| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Optional; defaults to Maya v2 (`p93c8a932419`) and Anna - Professional |
+| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Set in production to `p7ac55cbadb2` / `rf4703150052` (Charlie); omitting them falls back to `p93c8a932419` / Anna - Professional |
 
 `PUBLIC_BASE_URL` matters: without it, webhooks follow the per-deploy Vercel URL
 and preview deploys start receiving production callbacks.
@@ -166,7 +178,7 @@ and point the objective callbacks at it.
 | Route | Purpose |
 | --- | --- |
 | `/` | Public landing page |
-| `/intake` | Name, phone, consent, then the conversation with Maya |
+| `/intake` | Name, phone, email, consent, then the conversation with Ethan |
 | `/intake/thanks` | Post-conversation confirmation |
 | `/admin` | Intake list (password-gated) |
 | `/admin/[id]` | One intake: fields, narrative, transcript, video analysis, raw JSON, triage notes |

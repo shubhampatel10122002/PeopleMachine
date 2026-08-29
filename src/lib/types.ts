@@ -1,5 +1,7 @@
 /**
- * The variables Maya's objective set (crv-intake-v2, `o7fb756385afe`) emits.
+ * The variables Ethan's objective set (crv-intake-v2) emits — `ofc70727fb48e`
+ * in production, `o7fb756385afe` on the fallback PAL, the two being
+ * content-identical copies of each other.
  * Each objective posts `{ conversation_id, objective_name, output_variables }`
  * to our webhook, and every name below maps 1:1 onto a column on `intakes`.
  *
@@ -7,9 +9,10 @@
  */
 
 /**
- * Asked on every call, whatever the matter is. `first_name` and
- * `callback_phone` come from the web form rather than an objective. An empty
- * spine field means the call ended early or the caller declined — it is signal.
+ * Asked on every call, whatever the matter is. `first_name`, `callback_phone`
+ * and `email` come from the web form rather than an objective, and are written
+ * when the row is created. An empty spine field means the call ended early or
+ * the caller declined — it is signal.
  */
 export const INTAKE_SPINE_FIELDS = [
   "first_name",

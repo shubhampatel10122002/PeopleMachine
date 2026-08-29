@@ -7,8 +7,18 @@ function digitCount(value: string): number {
   return (value.match(/\d/g) ?? []).length;
 }
 
+/** Mirrors the check on the form. Deliberately loose — see IntakeClient. */
+function looksReachable(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export async function POST(request: Request) {
-  let body: { consent?: unknown; firstName?: unknown; callbackPhone?: unknown };
+  let body: {
+    consent?: unknown;
+    firstName?: unknown;
+    callbackPhone?: unknown;
+    email?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
@@ -26,6 +36,7 @@ export async function POST(request: Request) {
     typeof body.firstName === "string" ? body.firstName.trim() : "";
   const callbackPhone =
     typeof body.callbackPhone === "string" ? body.callbackPhone.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim() : "";
 
   if (!firstName) {
     return NextResponse.json(
@@ -41,12 +52,20 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!looksReachable(email)) {
+    return NextResponse.json(
+      { error: "Please enter an email address we can reach you on." },
+      { status: 400 },
+    );
+  }
+
   try {
     const startedAt = new Date();
     const conversation = await createConversation({
       conversationName: `People Machine intake — ${startedAt.toISOString()}`,
       firstName,
       callbackPhone,
+      email,
     });
 
     const { data, error } = await supabaseAdmin()
@@ -58,9 +77,10 @@ export async function POST(request: Request) {
         face_id: env.tavusFaceId,
         status: "in_progress",
         // Captured on the form, so the lead is usable even if they hang up
-        // before Maya gets to anything else.
+        // before Ethan gets to anything else.
         first_name: firstName.slice(0, 120),
         callback_phone: callbackPhone.slice(0, 64),
+        email: email.slice(0, 320),
         consent_at: startedAt.toISOString(),
         consent_version: CONSENT_VERSION,
         started_at: startedAt.toISOString(),
