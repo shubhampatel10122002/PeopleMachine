@@ -17,12 +17,12 @@ const steps = [
 ];
 
 const asked = [
-  "Your first name and a number to reach you, before the call starts",
+  "Your first name, a number and an email to reach you, before the call starts",
   "What happened, in your own words",
   "Who was responsible — an agency, employer, or landlord",
   "The state and county where it happened",
   "Roughly when it happened",
-  "Your email and the best time to reach you",
+  "The best time to reach you",
 ];
 
 export default function Home() {

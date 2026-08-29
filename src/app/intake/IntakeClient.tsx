@@ -15,6 +15,7 @@ export function IntakeClient() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [callbackPhone, setCallbackPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [consented, setConsented] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [phase, setPhase] = useState<Phase>("form");
@@ -29,9 +30,15 @@ export function IntakeClient() {
   const dailyRef = useRef<typeof import("@daily-co/daily-js").default | null>(null);
   const leavingRef = useRef(false);
 
+  // Deliberately loose. A wrong-but-plausible address is the server's problem to
+  // reject, and a caller who has just decided to describe an assault should not
+  // be argued with by a regex.
+  const emailLooksReachable = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const ready =
     firstName.trim().length > 0 &&
     (callbackPhone.match(/\d/g) ?? []).length >= 7 &&
+    emailLooksReachable &&
     consented;
 
   useEffect(() => {
@@ -79,6 +86,7 @@ export function IntakeClient() {
           consent: true,
           firstName: firstName.trim(),
           callbackPhone: callbackPhone.trim(),
+          email: email.trim(),
         }),
       });
       const data = await response.json();
@@ -175,7 +183,7 @@ export function IntakeClient() {
     <div className="rounded-2xl border border-line bg-surface p-8">
       <h2 className="font-display text-2xl tracking-tight">Before we start</h2>
       <p className="mt-2 text-sm text-muted">
-        Just two things, so we can reach you if the call drops.
+        Just three things, so we can reach you if the call drops.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -204,6 +212,21 @@ export function IntakeClient() {
             autoComplete="tel"
             value={callbackPhone}
             onChange={(event) => setCallbackPhone(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-line px-4 py-2.5 outline-none focus:border-brand"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label htmlFor="email" className="text-sm font-medium">
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             className="mt-2 w-full rounded-lg border border-line px-4 py-2.5 outline-none focus:border-brand"
           />
         </div>

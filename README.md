@@ -11,18 +11,26 @@ and the dashboard. Attorney accounts and matching come later.
 ```
 /intake  ──POST /api/intake/start──▶  Tavus: create conversation (Ethan)
    │                                      │
-   └─ first name + phone ────────────────▶├─ conversation_url ──▶ Daily SDK join
+   └─ first name + phone + email ────────▶├─ conversation_url ──▶ Daily SDK join
       (context + greeting)                │
                                           └─ webhooks ──▶ /api/tavus/webhook ──▶ Supabase
                                                               │
                                                             /admin
 ```
 
-Name and phone are collected on the page **before** the call, not by Ethan. Typed
-contact details beat transcribed ones, and it means an abandoned call still
-leaves a usable lead. They are passed to Tavus as `conversational_context` plus
-a per-conversation `custom_greeting`, so Ethan opens with the person's name and
-goes straight to their story.
+Name, phone and email are collected on the page **before** the call, not by
+Ethan. Typed contact details beat transcribed ones, and it means an abandoned
+call still leaves a usable lead. They are passed to Tavus as
+`conversational_context` plus a per-conversation `custom_greeting`, so Ethan
+opens with the person's name and goes straight to their story.
+
+Email moved onto the form for a second reason. It used to be asked at the close
+and answered through a Magic Canvas input card, and that card never rendered
+here: the call is joined with Daily's prebuilt iframe, and Magic Canvas is drawn
+by Tavus's own embed or its React components, neither of which is in the page.
+The card showed in PAL Maker's preview and nowhere else. Rather than rebuild the
+call UI around it, the address is typed up front with the rest of the contact
+details, and the capability is detached from both PALs.
 
 Four kinds of webhook arrive at the same endpoint:
 
@@ -78,9 +86,10 @@ webhook only maps names on that list. The split matters: spine fields are asked
 on every call and an empty one is signal, while branch fields are null on nearly
 every row by design and must never count toward completeness.
 
-`first_name` and `callback_phone` are written at `/api/intake/start` from the
-form rather than by a callback. Ethan's prompt tells him both are already on file
-and not to ask for either.
+`first_name`, `callback_phone` and `email` are written at `/api/intake/start`
+from the form rather than by a callback. Ethan's prompt tells him all three are
+already on file and not to ask for any of them, and `email` is no longer an
+output variable on `wrap_up`, so no callback can overwrite the typed address.
 
 ### Post-call extraction is not built
 
@@ -169,7 +178,7 @@ and point the objective callbacks at it.
 | Route | Purpose |
 | --- | --- |
 | `/` | Public landing page |
-| `/intake` | Name, phone, consent, then the conversation with Ethan |
+| `/intake` | Name, phone, email, consent, then the conversation with Ethan |
 | `/intake/thanks` | Post-conversation confirmation |
 | `/admin` | Intake list (password-gated) |
 | `/admin/[id]` | One intake: fields, narrative, transcript, video analysis, raw JSON, triage notes |

@@ -19,7 +19,7 @@ here, not this table.
 | Objective set | `ofc70727fb48e` | `o7fb756385afe` |
 | Face | `rf4703150052` — Charlie | `rf4e9d9790f0` — Anna - Professional |
 | Guardrails | 5 records + legacy set `g0cd6325883df` | 6 records, tagged `crv-intake-2026-08` |
-| Magic Canvas | attached | attached |
+| Magic Canvas | detached — see below | detached — see below |
 | Tools | `end_call` | none |
 | Knowledge base | none attached, on purpose — see below | none |
 | Perception | `raven-1`, no awareness queries | `raven-1`, three awareness queries |
@@ -141,6 +141,23 @@ why the node is called `general_matter` and not `message_only` — a label can l
 
 **No callback SLA is spoken.** "Someone from the firm will contact you," with no
 hours or days attached. The `triage` block still ranks the queue internally.
+
+**Email is typed on the form, not asked on the call.** It used to be the last
+thing `wrap_up` collected, answered through a Magic Canvas input card. That card
+never appeared for a caller: the site joins the call with Daily's prebuilt
+iframe, and Magic Canvas is rendered by Tavus's own embed or its `@tavus/cvi-ui`
+components, neither of which is in the page. It rendered in PAL Maker's preview,
+which is what made it look like it worked. The options were to rebuild the call
+UI around a renderer or to stop asking, and the address is worth less on the
+call than a working intake is — so `email` came off `wrap_up`'s output variables
+and its prompt, the `## The screen` section came off both system prompts, and
+Magic Canvas is detached from both PALs. Re-attaching it without a renderer in
+the page will produce the same silent nothing.
+
+`best_contact_time` and `voicemail_text_safe` are still asked out loud. They are
+judgement questions, not transcription-prone strings, and `voicemail_text_safe`
+in particular is a safety question that deserves to be asked by a person-shaped
+thing rather than typed into a box before anything has been said.
 
 **Confidentiality and non-engagement are not the agent's job.** They are in the
 pre-call checkbox (`src/app/intake/IntakeClient.tsx`), which already covers AI

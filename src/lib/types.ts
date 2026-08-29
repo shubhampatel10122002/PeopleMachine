@@ -9,9 +9,10 @@
  */
 
 /**
- * Asked on every call, whatever the matter is. `first_name` and
- * `callback_phone` come from the web form rather than an objective. An empty
- * spine field means the call ended early or the caller declined — it is signal.
+ * Asked on every call, whatever the matter is. `first_name`, `callback_phone`
+ * and `email` come from the web form rather than an objective, and are written
+ * when the row is created. An empty spine field means the call ended early or
+ * the caller declined — it is signal.
  */
 export const INTAKE_SPINE_FIELDS = [
   "first_name",
