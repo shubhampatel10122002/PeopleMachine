@@ -25,11 +25,12 @@ export const env = {
   get tavusPalId() {
     return process.env.TAVUS_PAL_ID || "p93c8a932419";
   },
-  /** Fallback only — Anna - Professional (phoenix-4). Production sets
-   *  TAVUS_FACE_ID to rf4703150052 (Charlie). Either way the face's own default
-   *  voice is used, because the TTS layer is left on tavus-auto. */
+  /** Charlie — the same face TAVUS_FACE_ID is set to in Vercel and the same one
+   *  both PALs carry as their default, so an unset env var cannot quietly swap
+   *  the agent's face. The face's own default voice is used, because the TTS
+   *  layer is left on tavus-auto. */
   get tavusFaceId() {
-    return process.env.TAVUS_FACE_ID || "rf4e9d9790f0";
+    return process.env.TAVUS_FACE_ID || "rf4703150052";
   },
   /** Shared secret appended to every callback_url we hand Tavus. */
   get tavusWebhookSecret() {
@@ -45,9 +46,19 @@ export const env = {
     return required("ADMIN_PASSWORD");
   },
   /**
-   * Where Tavus should send webhooks. Set PUBLIC_BASE_URL explicitly in
-   * production — the Vercel fallback keeps preview deploys from silently
-   * pointing callbacks at a URL that changes on every push.
+   * Where Tavus should send conversation-level webhooks. This must be an origin
+   * Tavus can actually reach, and getting it wrong is silent: the callbacks are
+   * posted into the void, nothing retries, and the intake sits at in_progress
+   * with no transcript. Objective callbacks survive it, because their URLs live
+   * on the objective set in Tavus rather than being built here — an intake with
+   * objective data but no transcript means this value is wrong.
+   *
+   * `VERCEL_PROJECT_PRODUCTION_URL` is the project's production *domain*, which
+   * is not necessarily wired up: attaching a custom domain in Vercel changes
+   * this even while the domain still points at a registrar parking page, and
+   * env values are baked per deployment, so the breakage lands on whichever
+   * deploy happens next rather than when the domain was attached. Set
+   * PUBLIC_BASE_URL explicitly and keep it on an origin that resolves.
    */
   get publicBaseUrl() {
     const explicit = process.env.PUBLIC_BASE_URL;

@@ -144,10 +144,48 @@ Vercel → Settings → Environment Variables.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → `service_role` |
 | `PUBLIC_BASE_URL` | Your production origin, e.g. `https://people-machine.vercel.app` |
 | `ADMIN_PASSWORD` | You pick it — this is the only thing guarding the dashboard |
-| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Set in production to `p7ac55cbadb2` / `rf4703150052` (Charlie); omitting them falls back to `p93c8a932419` / Anna - Professional |
+| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Set in production to `p7ac55cbadb2` / `rf4703150052` (Charlie); omitting them falls back to `p93c8a932419` / the same Charlie |
 
-`PUBLIC_BASE_URL` matters: without it, webhooks follow the per-deploy Vercel URL
-and preview deploys start receiving production callbacks.
+### `PUBLIC_BASE_URL` is the one that bites
+
+It is the origin Tavus posts conversation-level callbacks to
+(`system.replica_joined`, `system.shutdown`,
+`application.transcription_ready`, `application.perception_analysis`). If Tavus
+cannot reach it, **all of them are lost silently** — no retry, no error — and
+the intake sits at `in_progress` with no transcript.
+
+Objective callbacks survive that, because their URLs are stored on the
+objective set in Tavus rather than built from this value. **An intake carrying
+objective data but no transcript is the signature of a wrong
+`PUBLIC_BASE_URL`**, and the origin is logged on every conversation create so
+it can be checked against the Vercel logs.
+
+Two things make it easy to get wrong. It falls back to
+`VERCEL_PROJECT_PRODUCTION_URL`, which is the project's production *domain* —
+attaching a custom domain in Vercel changes that even while the domain still
+resolves to a registrar parking page. And env values are baked per deployment,
+so a change made today breaks whichever deploy happens next, not the one
+running when it was made. Set it explicitly, and only to an origin that
+resolves to this app.
+
+Nothing is unrecoverable when it does go wrong: see "Reconciling from Tavus".
+
+## Reconciling from Tavus
+
+The webhook is a push, and a push sent to an unreachable origin is gone — Tavus
+does not replay it. Tavus does keep the transcript and the perception analysis
+on the conversation itself, so `src/lib/reconcile.ts` reads them back
+(`GET /v2/conversations/{id}?verbose=true`) and writes what the webhook never
+delivered.
+
+It runs automatically on the admin pages for rows that look stuck — still
+`in_progress`, no transcript, and either already ended or started more than two
+minutes ago. The dashboard list repairs at most five per load; opening an
+intake repairs that one. Existing values are never overwritten, so a late
+webhook and a reconcile cannot fight.
+
+This means a lost-callback outage costs nothing permanently: fix the origin,
+open the dashboard, and the affected intakes fill themselves in.
 
 ## Tavus objective callbacks
 

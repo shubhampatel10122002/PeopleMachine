@@ -17,12 +17,17 @@ here, not this table.
 | --- | --- | --- |
 | PAL | `p7ac55cbadb2` — "Ethan" | `p93c8a932419` — "Ethan — Civil Rights Intake v2" |
 | Objective set | `ofc70727fb48e` | `o7fb756385afe` |
-| Face | `rf4703150052` — Charlie | `rf4e9d9790f0` — Anna - Professional |
+| Face | `rf4703150052` — Charlie | `rf4703150052` — Charlie |
 | Guardrails | 5 records + legacy set `g0cd6325883df` | 6 records, tagged `crv-intake-2026-08` |
 | Magic Canvas | detached — see below | detached — see below |
 | Tools | `end_call` | none |
 | Knowledge base | none attached, on purpose — see below | none |
 | Perception | `raven-1`, no awareness queries | `raven-1`, three awareness queries |
+
+The face is deliberately the same in three places now — both PALs'
+`default_face_id`, `TAVUS_FACE_ID` in Vercel, and the fallback in
+`src/lib/env.ts` — so the agent cannot change face depending on which of them
+is consulted. `p7ac55cbadb2` was still on Anna until this was synced.
 
 Both carry the same system prompt and the same ten-node objective tree
 (`ofc70727fb48e` is a content-identical copy of `o7fb756385afe`), so the design
