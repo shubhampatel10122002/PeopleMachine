@@ -223,7 +223,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
               .map((turn, index) => (
                 <div key={index}>
                   <div className="text-xs tracking-wide text-muted uppercase">
-                    {turn.role === "assistant" ? "Maya" : turn.role}
+                    {turn.role === "assistant" ? "Ethan" : turn.role}
                   </div>
                   <p className="prose-plain mt-1 leading-relaxed">{turn.content}</p>
                 </div>

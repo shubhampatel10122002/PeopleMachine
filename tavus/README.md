@@ -1,24 +1,45 @@
 # The Tavus agent
 
-Maya is first-line intake for a NYC civil rights firm. Four jobs, in this order
+Ethan is first-line intake for a NYC civil rights firm. Four jobs, in this order
 of emphasis: gather enough facts to evaluate whether there's a case, triage
 severity and urgency, route to the right attorney, and screen out matters the
 firm doesn't handle so attorneys stop losing time on dead-end calls.
 
 ## Live resources
 
-| Thing | ID |
-| --- | --- |
-| PAL | `p93c8a932419` — "Maya — Civil Rights Intake v2" |
-| Objective set | `o7fb756385afe` — `crv-intake-v2`, 10 nodes, `allow_loops: true` |
-| Face | `rf4e9d9790f0` — Anna - Professional |
-| LLM | `tavus-gemma-4` |
-| Guardrails | `gc55f903ffd0c` `gdfe46273ccbc` `g7bd20689b044` `g6cdadbe40a0e` `gea35dd3fe811` `gd5e9dc8f5a72`, tagged `crv-intake-2026-08` |
-| Knowledge base | none attached, on purpose — see below |
+Two PALs carry this agent, and **the one production actually serves is
+`p7ac55cbadb2`** — `TAVUS_PAL_ID` and `TAVUS_FACE_ID` are both set in Vercel and
+override the defaults in `src/lib/env.ts`. Every row in `intakes` records the
+`pal_id` and `face_id` the call actually ran on; that column is the authority
+here, not this table.
 
-**`p7ac55cbadb2` is superseded and must not be used again.** It is the
-pre-redesign Maya, and `TAVUS_PAL_ID` in Vercel still points at it until someone
-changes it. See "Why there are two PALs".
+| Thing | Serving production (`TAVUS_PAL_ID` in Vercel) | Code default in `src/lib/env.ts` |
+| --- | --- | --- |
+| PAL | `p7ac55cbadb2` — "Ethan" | `p93c8a932419` — "Ethan — Civil Rights Intake v2" |
+| Objective set | `ofc70727fb48e` | `o7fb756385afe` |
+| Face | `rf4703150052` — Charlie | `rf4e9d9790f0` — Anna - Professional |
+| Guardrails | 5 records + legacy set `g0cd6325883df` | 6 records, tagged `crv-intake-2026-08` |
+| Magic Canvas | attached | attached |
+| Tools | `end_call` | none |
+| Knowledge base | none attached, on purpose — see below | none |
+| Perception | `raven-1`, no awareness queries | `raven-1`, three awareness queries |
+
+Both carry the same system prompt and the same ten-node objective tree
+(`ofc70727fb48e` is a content-identical copy of `o7fb756385afe`), so the design
+notes below describe both. **Change one and you must change the other**, or the
+agent's behaviour starts depending on an environment variable.
+
+Two cosmetic differences remain on `p7ac55cbadb2`, both left alone deliberately
+because nobody has asked for a prompt edit beyond the rename: its prompt opens
+with a stray `## Identity & Role` heading immediately above `## Who you are`,
+left over from an earlier edit, and one bullet carries a trailing space. Neither
+changes behaviour. Delete the stray heading next time the prompt is touched for
+a real reason.
+
+*Earlier revisions of this file said `p7ac55cbadb2` was superseded, write-locked
+and carried no guardrails. That is no longer true — it was edited through PAL
+Maker on 2026-08-29, which cleared the draft lock, and it now has guardrails
+attached. It is the PAL callers actually reach.*
 
 ## Read this before editing prompts
 
@@ -141,23 +162,26 @@ the firm supplies them.
 
 ## Why there are two PALs
 
-The plan was to rebuild `p7ac55cbadb2` in place. Two hard walls made that
-impossible, both worth knowing before anyone tries again:
+The plan was to rebuild `p7ac55cbadb2` in place. Two walls made that impossible
+*at the time*, both worth knowing before anyone tries again:
 
-1. **Guardrails cannot be attached to an existing PAL.** `/guardrail_ids` and
-   `/guardrail_tags` are both absent from the API's `patchable_paths`, and no
-   attach tool exists. Guardrails can only be set at PAL *creation*.
-2. **The old PAL is write-locked.** Every write to it now returns
-   `409 maker_changes` — "This PAL has changes in PAL Maker. Retry with
-   force=true" — and no exposed tool passes `force`. Clearing it needs someone
-   to open PAL Maker in a browser.
+1. **Guardrails cannot be attached to an existing PAL through the API.**
+   `/guardrail_ids` and `/guardrail_tags` are both absent from the API's
+   `patchable_paths`, and no attach tool exists. Through the API they can only
+   be set at PAL *creation*. PAL Maker in a browser is not bound by this, which
+   is how `p7ac55cbadb2` came to have guardrails after all.
+2. **The old PAL was write-locked.** Every write returned `409 maker_changes` —
+   "This PAL has changes in PAL Maker. Retry with force=true" — and no exposed
+   tool passes `force`. Clearing it needed someone to open PAL Maker in a
+   browser, which has since happened.
 
-So `p93c8a932419` was created with the full configuration in one call, which is
-the only way to get guardrails attached at all.
+So `p93c8a932419` was created with the full configuration in one call, which was
+the only way to get guardrails attached from the API alone.
 
-`p7ac55cbadb2` is left mid-migration: new system prompt and new objective set,
-**no guardrails**, stale documents still attached. It cannot be finished or
-reverted through the API. It stops mattering the moment `TAVUS_PAL_ID` moves.
+Both PALs were then brought to the same prompt and objective tree by hand.
+`p7ac55cbadb2` is the one Vercel points at, so it is the one that matters;
+`p93c8a932419` is kept in step so that unsetting `TAVUS_PAL_ID` degrades to an
+equivalent agent rather than a different one.
 
 ### Two mechanisms, one of which does nothing
 

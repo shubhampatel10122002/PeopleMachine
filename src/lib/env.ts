@@ -15,19 +15,19 @@ export const env = {
     return required("TAVUS_API_KEY");
   },
   /**
-   * Maya — Civil Rights Intake v2. The pre-redesign PAL (p7ac55cbadb2) is
-   * superseded and must not be used: it is stuck mid-migration with no
-   * guardrails attached, and PAL Maker holds a draft on it that blocks every
-   * write, so it cannot be finished or reverted through the API.
-   *
-   * TAVUS_PAL_ID is set explicitly in Vercel and overrides this default, so it
-   * has to be updated there too — see tavus/README.md.
+   * Fallback only. Production sets TAVUS_PAL_ID in Vercel to p7ac55cbadb2, and
+   * that is the PAL callers actually reach — the pal_id column on `intakes`
+   * records what each call really ran on, so check it before believing any
+   * doc. Both PALs carry the same prompt and objective tree, so this fallback
+   * degrades to an equivalent agent rather than a different one; they have to
+   * be edited together to stay that way. See tavus/README.md.
    */
   get tavusPalId() {
     return process.env.TAVUS_PAL_ID || "p93c8a932419";
   },
-  /** Anna - Professional (phoenix-4). Its own default voice is used, because
-   *  Maya's TTS layer is left on tavus-auto. */
+  /** Fallback only — Anna - Professional (phoenix-4). Production sets
+   *  TAVUS_FACE_ID to rf4703150052 (Charlie). Either way the face's own default
+   *  voice is used, because the TTS layer is left on tavus-auto. */
   get tavusFaceId() {
     return process.env.TAVUS_FACE_ID || "rf4e9d9790f0";
   },

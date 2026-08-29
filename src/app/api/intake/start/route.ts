@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         face_id: env.tavusFaceId,
         status: "in_progress",
         // Captured on the form, so the lead is usable even if they hang up
-        // before Maya gets to anything else.
+        // before Ethan gets to anything else.
         first_name: firstName.slice(0, 120),
         callback_phone: callbackPhone.slice(0, 64),
         consent_at: startedAt.toISOString(),

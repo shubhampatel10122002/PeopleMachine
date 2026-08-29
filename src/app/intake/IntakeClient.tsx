@@ -140,7 +140,7 @@ export function IntakeClient() {
           {phase === "ready" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
               <p className="text-white">
-                Maya is ready. Your browser will ask for camera and microphone
+                Ethan is ready. Your browser will ask for camera and microphone
                 access.
               </p>
               <button
@@ -156,7 +156,7 @@ export function IntakeClient() {
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-muted">
-            Take your time. When you and Maya are finished, end the conversation
+            Take your time. When you and Ethan are finished, end the conversation
             below.
           </p>
           <button
@@ -211,7 +211,7 @@ export function IntakeClient() {
 
       <div className="mt-8 space-y-3 leading-relaxed text-muted">
         <p>
-          You&rsquo;ll be speaking with Maya, an AI intake specialist. She is
+          You&rsquo;ll be speaking with Ethan, an AI intake specialist. He is
           not a lawyer and cannot give legal advice.
         </p>
         <p>
@@ -233,7 +233,7 @@ export function IntakeClient() {
           className="mt-1 size-4 accent-brand"
         />
         <span className="text-sm leading-relaxed">
-          I understand that Maya is an AI assistant, that this conversation will
+          I understand that Ethan is an AI assistant, that this conversation will
           be transcribed, stored, and visually analysed, that this is not legal
           advice, and that no attorney&ndash;client relationship is created.
         </span>

@@ -10,7 +10,7 @@ export type CreatedConversation = {
 };
 
 /**
- * The name and phone come from a public form and get embedded in Maya's
+ * The name and phone come from a public form and get embedded in Ethan's
  * context and greeting, so collapse them to a single short line first. This
  * keeps a pasted paragraph — or an attempt at prompt injection — from
  * becoming instructions.
@@ -26,13 +26,13 @@ export type StartConversationInput = {
 };
 
 /**
- * Starts a CVI conversation with Maya. The callback_url carries a shared
+ * Starts a CVI conversation with Ethan. The callback_url carries a shared
  * secret so our webhook can reject anything that did not come from this call.
  *
  * Name and phone are collected on the web form, so they are passed as context
- * rather than asked for out loud — Maya's prompt tells her not to re-ask.
+ * rather than asked for out loud — Ethan's prompt tells him not to re-ask.
  *
- * Note: Maya's per-objective callbacks are configured on the objective set in
+ * Note: Ethan's per-objective callbacks are configured on the objective set in
  * Tavus, not here — see README ("Tavus objective callbacks").
  */
 export async function createConversation(
@@ -62,7 +62,7 @@ export async function createConversation(
         `so both are already on file. Do not ask for either one. ` +
         `Greet ${firstName} by name and invite them to tell you what happened.`,
       custom_greeting:
-        `Hi ${firstName}, I'm Maya. I help people here share what happened so the right attorney can take a look. ` +
+        `Hi ${firstName}, I'm Ethan. I help people here share what happened so the right attorney can take a look. ` +
         `Whenever you're ready, tell me what happened — take your time.`,
       properties: {
         max_call_duration: 1800,
