@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
+import { looksStuck, reconcileFromTavus } from "@/lib/reconcile";
 import {
   capturedSpineCount,
   INTAKE_SPINE_FIELDS,
@@ -8,6 +9,9 @@ import {
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+/** Bound on how many stuck rows one dashboard load will try to repair. */
+const RECONCILE_PER_LOAD = 5;
 
 export const metadata: Metadata = {
   title: "Intakes — People Machine",
@@ -44,7 +48,26 @@ async function loadIntakes(): Promise<{ intakes: Intake[]; error: string | null 
       .order("created_at", { ascending: false })
       .limit(200);
 
-    return { intakes: (data ?? []) as Intake[], error: error?.message ?? null };
+    const intakes = (data ?? []) as Intake[];
+
+    // Repair calls whose conversation callbacks never landed, so the list stops
+    // claiming a finished call is still running. Capped and only ever applied to
+    // rows that already look stuck — this is a rare failure, not the norm, and
+    // the list should not turn into a fan-out of Tavus reads.
+    const stuck = intakes.filter(looksStuck).slice(0, RECONCILE_PER_LOAD);
+    if (stuck.length > 0) {
+      const repaired = await Promise.all(stuck.map(reconcileFromTavus));
+      if (repaired.some(Boolean)) {
+        const { data: refreshed } = await supabaseAdmin()
+          .from("intakes")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
+        if (refreshed) return { intakes: refreshed as Intake[], error: null };
+      }
+    }
+
+    return { intakes, error: error?.message ?? null };
   } catch (thrown) {
     // Missing env vars land here — show what is wrong instead of a 500.
     return {

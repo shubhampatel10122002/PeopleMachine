@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase";
+import { looksStuck, reconcileFromTavus } from "@/lib/reconcile";
 import {
   capturedSpineCount,
   INTAKE_SPINE_FIELDS,
@@ -91,7 +92,21 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
 
   const { data } = await supabase.from("intakes").select("*").eq("id", id).maybeSingle();
   if (!data) notFound();
-  const intake = data as Intake;
+  let intake = data as Intake;
+
+  // A call whose conversation callbacks never arrived sits at in_progress with
+  // no transcript and no way to notice. Pull it back from Tavus on the way in,
+  // so opening the intake is what repairs it.
+  if (looksStuck(intake)) {
+    if (await reconcileFromTavus(intake)) {
+      const { data: refreshed } = await supabase
+        .from("intakes")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (refreshed) intake = refreshed as Intake;
+    }
+  }
 
   const { data: eventRows } = await supabase
     .from("intake_events")

@@ -44,6 +44,12 @@ export async function createConversation(
     env.tavusWebhookSecret,
   )}`;
 
+  // The origin here decides whether every conversation-level callback for this
+  // call ever reaches us, and a wrong one fails silently — Tavus posts into the
+  // void and the intake just sits at in_progress with no transcript. Logged
+  // without the secret so a stuck call can be diagnosed from the origin alone.
+  console.log("Tavus callback origin", new URL(callbackUrl).origin);
+
   const firstName = sanitize(input.firstName, 60);
   const callbackPhone = sanitize(input.callbackPhone, 32);
   const email = sanitize(input.email, 320);
@@ -102,4 +108,74 @@ export async function endConversation(conversationId: string): Promise<void> {
       `Tavus end conversation failed (${response.status}): ${detail}`,
     );
   }
+}
+
+/** What a conversation looks like when read back rather than pushed to us. */
+export type ConversationSnapshot = {
+  status: string | null;
+  transcript: unknown[] | null;
+  perceptionAnalysis: Record<string, unknown> | null;
+};
+
+type VerboseEvent = {
+  event_type?: string;
+  properties?: Record<string, unknown>;
+};
+
+/**
+ * Reads a finished conversation back from Tavus.
+ *
+ * The webhook is a push, and a push that goes to the wrong origin is gone for
+ * good — there is no replay. This is the pull side of the same data, so an
+ * intake stuck at in_progress can be reconciled after the fact instead of
+ * being written off. Tavus keeps the transcript and the perception analysis on
+ * the conversation itself; `?verbose=true` is what returns them.
+ *
+ * Shapes are read defensively: the transcript has been seen both as a
+ * top-level field and inside the events list, and neither is worth a crash.
+ */
+export async function fetchConversation(
+  conversationId: string,
+): Promise<ConversationSnapshot | null> {
+  const response = await fetch(
+    `${TAVUS_API}/conversations/${encodeURIComponent(conversationId)}?verbose=true`,
+    { headers: { "x-api-key": env.tavusApiKey } },
+  );
+
+  if (!response.ok) {
+    console.error(
+      `Tavus get conversation failed (${response.status})`,
+      await response.text(),
+    );
+    return null;
+  }
+
+  const body = (await response.json()) as {
+    status?: unknown;
+    transcript?: unknown;
+    events?: unknown;
+  };
+
+  const events: VerboseEvent[] = Array.isArray(body.events)
+    ? (body.events as VerboseEvent[])
+    : [];
+
+  const lastOf = (eventType: string): VerboseEvent | undefined =>
+    events.filter((event) => event?.event_type === eventType).at(-1);
+
+  const transcriptEvent = lastOf("application.transcription_ready");
+  const transcriptFromEvent = transcriptEvent?.properties?.transcript;
+  const transcript = Array.isArray(transcriptFromEvent)
+    ? transcriptFromEvent
+    : Array.isArray(body.transcript)
+      ? body.transcript
+      : null;
+
+  const perception = lastOf("application.perception_analysis")?.properties;
+
+  return {
+    status: typeof body.status === "string" ? body.status : null,
+    transcript,
+    perceptionAnalysis: perception ?? null,
+  };
 }
