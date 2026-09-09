@@ -3,6 +3,7 @@
 import type { DailyCall } from "@daily-co/daily-js";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AGENT_NAME } from "@/lib/agent";
 
 type Conversation = {
   conversationId: string;
@@ -148,8 +149,8 @@ export function IntakeClient() {
           {phase === "ready" && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
               <p className="text-white">
-                Ethan is ready. Your browser will ask for camera and microphone
-                access.
+                {AGENT_NAME} is ready. Your browser will ask for camera and
+                microphone access.
               </p>
               <button
                 type="button"
@@ -164,8 +165,8 @@ export function IntakeClient() {
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-muted">
-            Take your time. When you and Ethan are finished, end the conversation
-            below.
+            Take your time. When you and {AGENT_NAME} are finished, end the
+            conversation below.
           </p>
           <button
             type="button"
@@ -234,8 +235,8 @@ export function IntakeClient() {
 
       <div className="mt-8 space-y-3 leading-relaxed text-muted">
         <p>
-          You&rsquo;ll be speaking with Ethan, an AI intake specialist. He is
-          not a lawyer and cannot give legal advice.
+          You&rsquo;ll be speaking with {AGENT_NAME}, an AI intake specialist,
+          who is not a lawyer and cannot give legal advice.
         </p>
         <p>
           Your conversation is transcribed and stored, and your video is
@@ -256,9 +257,10 @@ export function IntakeClient() {
           className="mt-1 size-4 accent-brand"
         />
         <span className="text-sm leading-relaxed">
-          I understand that Ethan is an AI assistant, that this conversation will
-          be transcribed, stored, and visually analysed, that this is not legal
-          advice, and that no attorney&ndash;client relationship is created.
+          I understand that {AGENT_NAME} is an AI assistant, that this
+          conversation will be transcribed, stored, and visually analysed, that
+          this is not legal advice, and that no attorney&ndash;client
+          relationship is created.
         </span>
       </label>
 

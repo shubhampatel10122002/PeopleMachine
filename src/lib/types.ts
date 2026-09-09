@@ -1,7 +1,8 @@
 /**
- * The variables Ethan's objective set (crv-intake-v2) emits — `oe7a1976e9fda`
- * in production, `o7fb756385afe` on the fallback PAL, the two carrying the same
- * ten nodes.
+ * The variables the agent's objective set (crv-intake-v2) emits. Both PALs
+ * carry the same ten nodes. The set's id is deliberately not written down here:
+ * PAL Maker mints a new one on every save, so any id in a comment is wrong by
+ * the next edit — read it off the PAL when you need it.
  * Each objective posts `{ conversation_id, objective_name, output_variables }`
  * to our webhook, and every name below maps 1:1 onto a column on `intakes`.
  *

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { AGENT_NAME } from "@/lib/agent";
 
 const steps = [
   {
     title: "Talk it through",
-    body: "Ethan, our intake specialist, meets you on video. He asks what happened and then listens — no forms, no time limit, no wrong way to tell it.",
+    body: `${AGENT_NAME}, our intake specialist, meets you on video, asks what happened, and then listens — no forms, no time limit, no wrong way to tell it.`,
   },
   {
     title: "We organize it",
@@ -82,8 +83,8 @@ export default function Home() {
               </h2>
               <p className="mt-4 leading-relaxed text-muted">
                 Once the conversation starts, you can skip anything you are not
-                comfortable answering, and stop at any point. Ethan will not
-                push.
+                comfortable answering, and stop at any point. {AGENT_NAME} will
+                not push.
               </p>
               <ul className="mt-6 space-y-3">
                 {asked.map((item) => (
@@ -103,10 +104,10 @@ export default function Home() {
               </h2>
               <div className="mt-4 space-y-4 leading-relaxed text-muted">
                 <p>
-                  Ethan is an AI assistant, not a lawyer, and not a person. He
-                  is here to listen and take down what happened accurately. The
-                  conversation is transcribed and the video is analysed, so our
-                  team can review it properly.
+                  {AGENT_NAME} is an AI assistant, not a lawyer, and not a
+                  person &mdash; here to listen and take down what happened
+                  accurately. The conversation is transcribed and the video is
+                  analysed, so our team can review it properly.
                 </p>
                 <p>
                   We are building our network of civil rights attorneys right

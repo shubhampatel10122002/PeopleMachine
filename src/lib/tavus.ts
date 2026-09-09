@@ -10,9 +10,9 @@ export type CreatedConversation = {
 };
 
 /**
- * The name, phone and email come from a public form and get embedded in Ethan's
- * context and greeting, so collapse them to a single short line first. This
- * keeps a pasted paragraph — or an attempt at prompt injection — from
+ * The name, phone and email come from a public form and get embedded in the
+ * agent's context and greeting, so collapse them to a single short line first.
+ * This keeps a pasted paragraph — or an attempt at prompt injection — from
  * becoming instructions.
  */
 function sanitize(value: string, maxLength: number): string {
@@ -27,25 +27,35 @@ export type StartConversationInput = {
 };
 
 /**
- * Starts a CVI conversation with Ethan. The callback_url carries a shared
- * secret so our webhook can reject anything that did not come from this call.
+ * Starts a CVI conversation with whichever PAL TAVUS_PAL_ID names. The
+ * callback_url carries a shared secret so our webhook can reject anything that
+ * did not come from this call.
  *
  * Name, phone and email are collected on the web form, so they are passed as
- * context rather than asked for out loud — Ethan's prompt tells him not to
+ * context rather than asked for out loud — the PAL's prompt says not to
  * re-ask.
  *
- * No `face_id` is sent, deliberately. A face_id in this body overrides the
- * PAL's `default_face_id`, which meant the face was pinned by an env var in
- * Vercel and editing it in PAL Maker changed nothing — the symptom that got
- * this removed. The PAL is now the only place the face is set. Tavus requires
- * a face from one side or the other, so a PAL with no `default_face_id` fails
- * here with a 400 rather than falling back to anything.
+ * Nothing about the agent's identity is sent from here — not `face_id`, not the
+ * name, not the greeting. Every one of those fields overrides the PAL when it
+ * appears in this body, and each override in turn was why an edit in PAL Maker
+ * appeared to do nothing: the face was pinned by an env var, and the greeting
+ * hardcoded the agent's name, so renaming the PAL left callers still being
+ * greeted by the old name. PAL Maker is now the only place any of it is set.
  *
- * Note: Ethan's per-objective callbacks are configured on the objective set in
+ * The one exception is `custom_greeting`, and only when the PAL's own greeting
+ * asks for it by containing a `{first_name}` token — the text is still the
+ * PAL's, with the name filled in. See personalizeGreeting.
+ *
+ * Tavus requires a face from the PAL or the request, and the request no longer
+ * supplies one, so a PAL with no `default_face_id` fails here with a 400 rather
+ * than falling back to anything.
+ *
+ * Note: the per-objective callbacks are configured on the objective set in
  * Tavus, not here — see README ("Tavus objective callbacks").
  */
 export async function createConversation(
   input: StartConversationInput,
+  pal: PalConfig,
 ): Promise<CreatedConversation> {
   const callbackUrl = `${env.publicBaseUrl}/api/tavus/webhook?secret=${encodeURIComponent(
     env.tavusWebhookSecret,
@@ -60,6 +70,7 @@ export async function createConversation(
   const firstName = sanitize(input.firstName, 60);
   const callbackPhone = sanitize(input.callbackPhone, 32);
   const email = sanitize(input.email, 320);
+  const personalizedGreeting = personalizeGreeting(pal.greeting, firstName);
 
   const response = await fetch(`${TAVUS_API}/conversations`, {
     method: "POST",
@@ -76,9 +87,10 @@ export async function createConversation(
         `They gave their first name, callback number (${callbackPhone}) and email address (${email}) on the web form before this call, ` +
         `so all three are already on file. Do not ask for any of them. ` +
         `Greet ${firstName} by name and invite them to tell you what happened.`,
-      custom_greeting:
-        `Hi ${firstName}, I'm Ethan. I help people here share what happened so the right attorney can take a look. ` +
-        `Whenever you're ready, tell me what happened — take your time.`,
+      // Omitted entirely unless the PAL's greeting carries a {first_name}
+      // token; an absent custom_greeting is what makes Tavus speak the PAL's
+      // own, which is the whole point.
+      ...(personalizedGreeting ? { custom_greeting: personalizedGreeting } : {}),
       properties: {
         max_call_duration: 1800,
         participant_left_timeout: 60,
@@ -97,17 +109,27 @@ export async function createConversation(
   return (await response.json()) as CreatedConversation;
 }
 
+/** The parts of a PAL this app reads back rather than dictates. */
+export type PalConfig = {
+  faceId: string | null;
+  name: string | null;
+  greeting: string | null;
+};
+
 /**
- * Reads the face a PAL is currently configured with, only so `intakes.face_id`
- * keeps recording what each call actually ran on. Nothing is sent back to
- * Tavus — the PAL decides the face on its own.
+ * Reads the PAL's own configuration so PAL Maker stays the only place the
+ * agent's identity is set. Nothing here is ever sent back as an override —
+ * `greeting` is read only so the caller's first name can be substituted into
+ * it, and `faceId` only so `intakes.face_id` records what the call ran on.
  *
- * Best-effort on purpose: the create-conversation response does not carry the
- * face, so this is a second round trip, and a lead is worth more than an audit
- * column. Every failure returns null and the intake proceeds. Call it
- * concurrently with createConversation so it costs no wall-clock time.
+ * Never rejects. Every failure degrades to nulls: the conversation is created
+ * with no greeting override (Tavus falls back to the PAL's own greeting, which
+ * is what we wanted anyway) and the row records a null face. A lead is worth
+ * more than either.
  */
-export async function fetchPalFaceId(palId: string): Promise<string | null> {
+export async function fetchPalConfig(palId: string): Promise<PalConfig> {
+  const empty: PalConfig = { faceId: null, name: null, greeting: null };
+
   try {
     const response = await fetch(
       `${TAVUS_API}/pals/${encodeURIComponent(palId)}`,
@@ -119,17 +141,44 @@ export async function fetchPalFaceId(palId: string): Promise<string | null> {
         `Tavus get pal failed (${response.status})`,
         await response.text(),
       );
-      return null;
+      return empty;
     }
 
-    const body = (await response.json()) as { default_face_id?: unknown };
-    return typeof body.default_face_id === "string"
-      ? body.default_face_id
-      : null;
+    const body = (await response.json()) as {
+      default_face_id?: unknown;
+      pal_name?: unknown;
+      greeting?: unknown;
+    };
+
+    const str = (value: unknown) =>
+      typeof value === "string" && value.trim() ? value : null;
+
+    return {
+      faceId: str(body.default_face_id),
+      name: str(body.pal_name),
+      greeting: str(body.greeting),
+    };
   } catch (error) {
     console.error("Tavus get pal threw", error);
-    return null;
+    return empty;
   }
+}
+
+/**
+ * Weaves the caller's first name into the PAL's own greeting.
+ *
+ * The greeting text belongs to PAL Maker, so the only thing done to it here is
+ * substituting `{first_name}` (or `{firstname}`, either case). A greeting with
+ * no token is left entirely alone and no override is sent at all, so what PAL
+ * Maker shows is exactly what the caller hears.
+ */
+function personalizeGreeting(
+  greeting: string | null,
+  firstName: string,
+): string | null {
+  if (!greeting) return null;
+  const personalized = greeting.replace(/\{first_?name\}/gi, firstName);
+  return personalized === greeting ? null : personalized;
 }
 
 /** Best-effort cleanup so an abandoned room does not run to max duration. */

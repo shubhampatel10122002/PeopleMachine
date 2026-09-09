@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CONSENT_VERSION, env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
-import { createConversation, fetchPalFaceId } from "@/lib/tavus";
+import { createConversation, fetchPalConfig } from "@/lib/tavus";
 
 function digitCount(value: string): number {
   return (value.match(/\d/g) ?? []).length;
@@ -62,19 +62,23 @@ export async function POST(request: Request) {
   try {
     const startedAt = new Date();
 
-    // The face lives on the PAL now, so it has to be read back rather than
-    // dictated. Run it alongside the create so it adds no wall-clock time, and
-    // note fetchPalFaceId never rejects — a failed lookup records a null face
-    // and must not cost us the lead.
-    const [conversation, faceId] = await Promise.all([
-      createConversation({
+    // The agent's face, name and greeting all live on the PAL now, so they get
+    // read back rather than dictated. This has to happen before the create
+    // rather than alongside it, because the greeting is an input to it — one
+    // extra GET against a call that is already standing up a video room.
+    // fetchPalConfig never rejects; a failed read just means no greeting
+    // override and a null face, and must not cost us the lead.
+    const pal = await fetchPalConfig(env.tavusPalId);
+
+    const conversation = await createConversation(
+      {
         conversationName: `People Machine intake — ${startedAt.toISOString()}`,
         firstName,
         callbackPhone,
         email,
-      }),
-      fetchPalFaceId(env.tavusPalId),
-    ]);
+      },
+      pal,
+    );
 
     const { data, error } = await supabaseAdmin()
       .from("intakes")
@@ -82,10 +86,10 @@ export async function POST(request: Request) {
         tavus_conversation_id: conversation.conversation_id,
         tavus_conversation_url: conversation.conversation_url,
         pal_id: env.tavusPalId,
-        face_id: faceId,
+        face_id: pal.faceId,
         status: "in_progress",
         // Captured on the form, so the lead is usable even if they hang up
-        // before Ethan gets to anything else.
+        // before the agent gets to anything else.
         first_name: firstName.slice(0, 120),
         callback_phone: callbackPhone.slice(0, 64),
         email: email.slice(0, 320),
