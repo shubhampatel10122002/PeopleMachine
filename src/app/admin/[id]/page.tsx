@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AGENT_NAME } from "@/lib/agent";
 import { supabaseAdmin } from "@/lib/supabase";
 import { looksStuck, reconcileFromTavus } from "@/lib/reconcile";
 import {
@@ -238,7 +239,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
               .map((turn, index) => (
                 <div key={index}>
                   <div className="text-xs tracking-wide text-muted uppercase">
-                    {turn.role === "assistant" ? "Ethan" : turn.role}
+                    {turn.role === "assistant" ? AGENT_NAME : turn.role}
                   </div>
                   <p className="prose-plain mt-1 leading-relaxed">{turn.content}</p>
                 </div>

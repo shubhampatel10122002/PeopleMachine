@@ -9,7 +9,7 @@ and the dashboard. Attorney accounts and matching come later.
 ## How it works
 
 ```
-/intake  ──POST /api/intake/start──▶  Tavus: create conversation (Ethan)
+/intake  ──POST /api/intake/start──▶  Tavus: create conversation (the PAL)
    │                                      │
    └─ first name + phone + email ────────▶├─ conversation_url ──▶ Daily SDK join
       (context + greeting)                │
@@ -19,10 +19,14 @@ and the dashboard. Attorney accounts and matching come later.
 ```
 
 Name, phone and email are collected on the page **before** the call, not by
-Ethan. Typed contact details beat transcribed ones, and it means an abandoned
-call still leaves a usable lead. They are passed to Tavus as
-`conversational_context` plus a per-conversation `custom_greeting`, so Ethan
-opens with the person's name and goes straight to their story.
+the agent. Typed contact details beat transcribed ones, and it means an
+abandoned call still leaves a usable lead. They are passed to Tavus as
+`conversational_context`, so the agent already has all three and goes straight
+to the person's story.
+
+The greeting itself belongs to PAL Maker. A `custom_greeting` is sent only when
+the PAL's own greeting contains a `{first_name}` token, and then it is that same
+text with the name filled in — see [`tavus/README.md`](tavus/README.md).
 
 Email moved onto the form for a second reason. It used to be asked at the close
 and answered through a Magic Canvas input card, and that card never rendered
@@ -55,12 +59,14 @@ which echoes our callback URL and therefore the shared secret.
 
 ## The Tavus agent
 
-Ethan. Production serves PAL `p7ac55cbadb2` — set via `TAVUS_PAL_ID` in Vercel —
-with objective set `oe7a1976e9fda`. The **face is not configured here at all**:
-it is whatever `default_face_id` the PAL carries in PAL Maker, currently
-`rf4e9d9790f0` ("Anna - Professional"). A second PAL, `p93c8a932419`, is the
-fallback baked into `src/lib/env.ts` and carries the same prompt and objective
-tree. **Full
+Kelly. Production serves PAL `p7ac55cbadb2`, set via `TAVUS_PAL_ID` in Vercel.
+**Nothing about the agent's identity is configured in this repo** — the name it
+gives, its greeting, its face and its system prompt are all read off the PAL at
+call time, so editing them in PAL Maker needs no deploy. The one exception is
+`AGENT_NAME` in `src/lib/agent.ts`, which is the name in static site copy and has
+to be changed alongside a rename. A second PAL, `p93c8a932419`, is the fallback
+baked into `src/lib/env.ts`; it has **not** been renamed and still carries the
+old face. **Full
 detail, and the reasoning behind every choice, is in
 [`tavus/README.md`](tavus/README.md)** — read that before touching a prompt, and
 note that a prompt change has to be made on both PALs.
@@ -89,7 +95,7 @@ on every call and an empty one is signal, while branch fields are null on nearly
 every row by design and must never count toward completeness.
 
 `first_name`, `callback_phone` and `email` are written at `/api/intake/start`
-from the form rather than by a callback. Ethan's prompt tells him all three are
+from the form rather than by a callback. The PAL's prompt says all three are
 already on file and not to ask for any of them, and `email` is no longer an
 output variable on `wrap_up`, so no callback can overwrite the typed address.
 
@@ -222,7 +228,7 @@ and point the objective callbacks at it.
 | Route | Purpose |
 | --- | --- |
 | `/` | Public landing page |
-| `/intake` | Name, phone, email, consent, then the conversation with Ethan |
+| `/intake` | Name, phone, email, consent, then the conversation with the agent |
 | `/intake/thanks` | Post-conversation confirmation |
 | `/admin` | Intake list (password-gated) |
 | `/admin/[id]` | One intake: fields, narrative, transcript, video analysis, raw JSON, triage notes |

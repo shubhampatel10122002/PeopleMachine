@@ -1,66 +1,100 @@
 # The Tavus agent
 
-Ethan is first-line intake for a NYC civil rights firm. Four jobs, in this order
+Kelly is first-line intake for a NYC civil rights firm. Four jobs, in this order
 of emphasis: gather enough facts to evaluate whether there's a case, triage
 severity and urgency, route to the right attorney, and screen out matters the
 firm doesn't handle so attorneys stop losing time on dead-end calls.
 
-## Live resources
+## Identity lives in PAL Maker, not in this repo
 
-Two PALs carry this agent, and **the one production actually serves is
-`p7ac55cbadb2`** — `TAVUS_PAL_ID` is set in Vercel and overrides the default in
-`src/lib/env.ts`. Every row in `intakes` records the `pal_id` and `face_id` the
-call actually ran on; that column is the authority here, not this table.
+The name the agent gives, its greeting, its face and its whole system prompt are
+read off the PAL at call time. Change any of them in PAL Maker and the change is
+live on the next call, with no deploy.
 
-| Thing | Serving production (`TAVUS_PAL_ID` in Vercel) | Code default in `src/lib/env.ts` |
-| --- | --- | --- |
-| PAL | `p7ac55cbadb2` — "Ethan" | `p93c8a932419` — "Ethan — Civil Rights Intake v2" |
-| Objective set | `oe7a1976e9fda` | `o7fb756385afe` |
-| Face | `rf4e9d9790f0` — "Anna - Professional" | `rf4703150052` — "Daniel - Office" |
-| Guardrails | 5 records, set `g71a3def63744` | 6 records, tagged `crv-intake-2026-08` |
-| Magic Canvas | detached — see below | detached — see below |
-| Tools | `end_call` | none |
-| Knowledge base | none attached, on purpose — see below | none |
-| Perception | no perception layer set | `raven-1`, three awareness queries |
+That was not always true, and it failed the same way twice. `src/lib/tavus.ts`
+used to send both `face_id` and `custom_greeting` in the create-conversation
+body, and **every field sent there overrides the PAL**. So the face was really
+pinned by `TAVUS_FACE_ID` in Vercel, and the greeting hardcoded the agent's name
+— renaming the PAL to Kelly left callers still being greeted by Ethan. Both
+overrides are gone. `TAVUS_FACE_ID` is no longer read at all, so a stale value
+still sitting in the Vercel project is inert rather than silently authoritative;
+delete it there when convenient.
 
-## The face is set in PAL Maker, and only there
+The rule to keep: **anything you put in that request body wins over PAL Maker.**
+Adding a field back is choosing to make it uneditable.
 
-Change it on the PAL and the change is live on the next call. Nothing in this
-repo names a face any more.
+### The one thing left in code: site copy
 
-It used to. `src/lib/tavus.ts` sent `face_id` in the create-conversation body,
-and a face_id there **overrides the PAL's `default_face_id`** — so the face was
-really pinned by `TAVUS_FACE_ID` in Vercel, and editing it in PAL Maker changed
-nothing at all. That env var is gone from the code, so a stale value left in the
-Vercel project is now inert rather than silently authoritative. Delete it there
-when convenient.
+`AGENT_NAME` in `src/lib/agent.ts` is the name on the landing page, the consent
+text and the `/admin` transcript labels. Static marketing copy cannot be fetched
+from Tavus without making every page render an API call, so this one line is the
+price. **A rename is therefore two steps** — the PAL, and that constant. Nothing
+enforces that they agree.
 
-Two consequences worth knowing:
+Code comments deliberately say "the agent" rather than a name, so a rename never
+has to touch them.
+
+### Personalized greetings
+
+Callers used to be greeted by name, from a greeting built in code. The greeting
+now belongs to PAL Maker, so the personalization is opt-in from there: put
+`{first_name}` in the PAL's greeting and it is substituted at call time.
+
+- Greeting **with** the token → `custom_greeting` is sent, carrying the PAL's own
+  text with the name filled in.
+- Greeting **without** it → no `custom_greeting` is sent at all, and Tavus speaks
+  the PAL's greeting verbatim. What PAL Maker shows is what the caller hears.
+
+`{firstname}` works too, and both are case-insensitive.
+
+### Two more consequences
 
 - **A PAL with no `default_face_id` now fails.** Tavus needs a face from the PAL
   or the request, and the request no longer supplies one, so an unset face is a
   400 on conversation create rather than a silent fallback.
 - **The voice follows the face.** The TTS layer is on `tavus-auto` with an empty
   `voice_id`, so each face's own default voice is used. Changing the face in PAL
-  Maker changes how Ethan sounds, not just how he looks.
+  Maker changes how the agent sounds, not just how it looks.
 
-`intakes.face_id` is now read back from the PAL at call time (`fetchPalFaceId`),
-concurrently with the create so it costs no latency. The lookup is best-effort:
-if it fails the row records a null face and the call still goes ahead.
+`intakes.face_id` is read back from the PAL at call time (`fetchPalConfig`, which
+also supplies the greeting). It is best-effort and never throws: if the read
+fails, the row records a null face, no greeting override is sent, and the call
+still goes ahead.
 
-**The two PALs no longer agree on the face** — `p7ac55cbadb2` is on
-`rf4e9d9790f0`, `p93c8a932419` is still on `rf4703150052`. While the face came
-from an env var that did not matter, because the env var won either way. It
-matters now: unset `TAVUS_PAL_ID` and the agent changes face as well as PAL.
-Sync the fallback PAL, or accept that the fallback looks different.
+## Live resources
 
-Note also that the face named "Charlie" throughout earlier revisions of this
+Two PALs carry this agent, and **the one production actually serves is
+`p7ac55cbadb2`** — `TAVUS_PAL_ID` is set in Vercel and overrides the default in
+`src/lib/env.ts`.
+
+| Thing | Serving production (`TAVUS_PAL_ID` in Vercel) | Code default in `src/lib/env.ts` |
+| --- | --- | --- |
+| PAL | `p7ac55cbadb2` — "Kelly" | `p93c8a932419` — "Ethan — Civil Rights Intake v2" |
+| Face | "Kelly - Casual" | "Daniel - Office" |
+| Magic Canvas | detached — see below | detached — see below |
+| Tools | `end_call` | none |
+| Knowledge base | none attached, on purpose — see below | none |
+| Perception | no perception layer set | `raven-1`, three awareness queries |
+
+**Do not write objective-set, guardrail or face ids into this file.** PAL Maker
+mints new ones on every save. Within a single afternoon the production PAL went
+through three objective-set ids and three faces; every id this file has ever
+pinned was stale within days, which is what made earlier revisions actively
+misleading. Read the current ids off the PAL when you need them, and treat
+`intakes.pal_id` / `intakes.face_id` as the record of what a given call ran on.
+
+**The two PALs do not agree on the face, or now the name.** `p93c8a932419` is
+still Ethan on "Daniel - Office". While the face came from an env var this did
+not matter, because the env var won either way. It matters now: unset
+`TAVUS_PAL_ID` and the agent changes name, face and voice. Sync the fallback PAL
+or retire it.
+
+Note also that the face called "Charlie" throughout earlier revisions of this
 file never existed. `rf4703150052` is **"Daniel - Office"** in Tavus, and always
 was.
 
-Both carry the same system prompt and the same ten-node objective tree
-(`oe7a1976e9fda` carries the same ten nodes as `o7fb756385afe`), so the design
-notes below describe both. **Change one and you must change the other**, or the
+Both carry the same system prompt and the same ten-node objective tree, so the
+design notes below describe both. **Change one and you must change the other**, or the
 agent's behaviour starts depending on an environment variable.
 
 Two cosmetic differences remain on `p7ac55cbadb2`, both left alone deliberately
