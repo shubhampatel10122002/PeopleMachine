@@ -98,6 +98,66 @@ crisis resources, never decline a matter, no callback SLA, no merits
 evaluation, never read the account back. They are in the system prompt in
 `src/lib/openai.ts`.
 
+## The site assistant
+
+The chat badge in the corner of every public page that is not an intake. It is
+the third place a model is called in this app, and the only one that holds
+nothing: `src/lib/assistant.ts` for the call, `src/app/api/assistant/route.ts`
+for the turn, `src/components/assistant-widget.tsx` for the badge and panel,
+mounted once from the root layout.
+
+It exists to answer the two questions people ask *before* they are willing to
+start an intake — how does this work, and is my situation the kind of thing you
+mean — without them opening ChatGPT in another tab to ask. It runs on the same
+`gpt-5.6-sol` through the same Responses API as the text intake, with OpenAI's
+`web_search` tool attached so a question of fact is answered from something
+rather than from memory.
+
+Four decisions, in the order they matter:
+
+**Nothing crosses into an intake.** The assistant's entire reach into the rest
+of the app is a link: it can render a button to /intake or /intake/text, and
+that is all. Nothing said in the badge is passed to Tavus, written to `intakes`,
+or carried into Kelly's conversation, so an intake always starts clean and there
+is never a second transcript to reconcile against the first. The panel says so
+in as many words, because someone who has just described their situation twice
+will otherwise assume it carried.
+
+**Nothing is stored, anywhere.** The conversation lives in the browser's
+`sessionStorage` and dies with the tab. The route is stateless, touches no
+table, and sets `store: false` on the model call. That is why there is no
+session token here and nothing for one to protect: a legal question typed by
+someone still deciding whether to trust us is not ours to keep. What people want
+on the record, they say to Kelly.
+
+**The answer is a structure, not a paragraph.** The model returns strict
+structured output: a `reply` of one or two sentences, and at most one `block`
+that the widget renders as numbered steps, a label/value list, or two options
+side by side. A 400px column is the worst place on earth to read prose, and a
+model told to be brief in prose will not stay brief. `normalizeAnswer` in
+`assistant.ts` caps every string and array afterwards, and downgrades a block
+that claims a shape it has no content for — an empty bordered box reads as
+broken in a way a missing one never does.
+
+**Sources come from the annotations, never from the model.** A url the model
+typed into its JSON is a url it may have invented. `readSources` reads
+`url_citation` annotations off the response instead, so a chip under an answer
+is evidence the search tool really fetched that page.
+
+The prohibitions in the system prompt are the firm's standing decisions, carried
+over from the call agent and the text intake so the three surfaces cannot
+contradict one another: never say the firm does not handle a matter, never refer
+elsewhere, never mention a crisis resource, never say whether a case is strong.
+The one place it is deliberately looser than Kelly is general legal questions,
+which it may explain and may not apply — including deadlines, where it may say
+that limits exist and are sometimes very short without turning that into a date
+for the person asking. Widening or narrowing that line is a decision about the
+firm's exposure, not a prompt tweak.
+
+If OpenAI cannot be reached the route still answers, with an apology and the two
+intake buttons, because the buttons are the point of the badge and they work
+whether or not a model does.
+
 ## The Tavus agent
 
 Kelly. Production serves PAL `p7ac55cbadb2`, set via `TAVUS_PAL_ID` in Vercel.
@@ -296,6 +356,7 @@ instead of adapting; /admin marks those rows `text (scripted)`.
 | `/admin` | Intake list (password-gated) |
 | `/admin/[id]` | One intake: fields, narrative, transcript, video analysis, raw JSON, triage notes |
 | `/api/tavus/webhook` | Everything Tavus sends back |
+| `/api/assistant` | One turn of the site-wide chat badge. Stateless, stores nothing |
 | `/api/intake/text/start` | Opens a typed intake and returns the first question |
 | `/api/intake/text/turn` | One answer in, the next question out |
 

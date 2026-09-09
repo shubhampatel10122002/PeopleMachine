@@ -27,7 +27,14 @@ import {
 
 let client: OpenAI | null = null;
 
-function openai(): OpenAI {
+/**
+ * Shared across every OpenAI call the app makes, so one key, one project and
+ * one retry policy are configured in a single place. Per-call overrides go in
+ * the request options argument rather than a second client: the site assistant
+ * in `assistant.ts` needs a longer timeout than an intake turn, and that is a
+ * property of the request, not of the account.
+ */
+export function openaiClient(): OpenAI {
   if (!client) {
     client = new OpenAI({
       apiKey: env.openaiApiKey,
@@ -248,7 +255,7 @@ export async function nextIntakeStep(request: StepRequest): Promise<ModelStep> {
     may_finish_now: request.mayFinish,
   };
 
-  const response = await openai().responses.create({
+  const response = await openaiClient().responses.create({
     model: env.openaiModel,
     instructions: INSTRUCTIONS,
     input: [

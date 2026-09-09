@@ -27,3 +27,40 @@ body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* The assistant badge and panel entering. Kept here rather than as a theme
+   animation so the keyframes are emitted whether or not a utility references
+   them, and honoured only where motion is welcome. */
+.pm-rise {
+  animation: pm-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* The three dots under an unanswered question. The answer is not streamed, so
+   this is the only sign that anything is happening. */
+.pm-blink {
+  animation: pm-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes pm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes pm-blink {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-rise {
+    animation: none;
+  }
+}

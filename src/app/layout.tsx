@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { AssistantWidget } from "@/components/assistant-widget";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +31,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${displaySerif.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        {children}
+        {/* Mounted once for the whole site so a new public page gets the badge
+            without being told to. It hides itself on /admin and on the two
+            intakes — see HIDDEN_EXACT in the component. */}
+        <AssistantWidget />
+      </body>
     </html>
   );
 }

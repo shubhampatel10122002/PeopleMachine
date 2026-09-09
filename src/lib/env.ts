@@ -38,7 +38,7 @@ export const env = {
   get adminPassword() {
     return required("ADMIN_PASSWORD");
   },
-  /** Drives the text intake at /intake/text. Nothing else in the app reads it. */
+  /** Drives the text intake at /intake/text and the site assistant badge. */
   get openaiApiKey() {
     return required("OPENAI_API_KEY");
   },
