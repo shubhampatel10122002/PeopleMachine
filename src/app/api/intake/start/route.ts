@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CONSENT_VERSION, env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
-import { createConversation } from "@/lib/tavus";
+import { createConversation, fetchPalFaceId } from "@/lib/tavus";
 
 function digitCount(value: string): number {
   return (value.match(/\d/g) ?? []).length;
@@ -61,12 +61,20 @@ export async function POST(request: Request) {
 
   try {
     const startedAt = new Date();
-    const conversation = await createConversation({
-      conversationName: `People Machine intake — ${startedAt.toISOString()}`,
-      firstName,
-      callbackPhone,
-      email,
-    });
+
+    // The face lives on the PAL now, so it has to be read back rather than
+    // dictated. Run it alongside the create so it adds no wall-clock time, and
+    // note fetchPalFaceId never rejects — a failed lookup records a null face
+    // and must not cost us the lead.
+    const [conversation, faceId] = await Promise.all([
+      createConversation({
+        conversationName: `People Machine intake — ${startedAt.toISOString()}`,
+        firstName,
+        callbackPhone,
+        email,
+      }),
+      fetchPalFaceId(env.tavusPalId),
+    ]);
 
     const { data, error } = await supabaseAdmin()
       .from("intakes")
@@ -74,7 +82,7 @@ export async function POST(request: Request) {
         tavus_conversation_id: conversation.conversation_id,
         tavus_conversation_url: conversation.conversation_url,
         pal_id: env.tavusPalId,
-        face_id: env.tavusFaceId,
+        face_id: faceId,
         status: "in_progress",
         // Captured on the form, so the lead is usable even if they hang up
         // before Ethan gets to anything else.

@@ -34,6 +34,13 @@ export type StartConversationInput = {
  * context rather than asked for out loud — Ethan's prompt tells him not to
  * re-ask.
  *
+ * No `face_id` is sent, deliberately. A face_id in this body overrides the
+ * PAL's `default_face_id`, which meant the face was pinned by an env var in
+ * Vercel and editing it in PAL Maker changed nothing — the symptom that got
+ * this removed. The PAL is now the only place the face is set. Tavus requires
+ * a face from one side or the other, so a PAL with no `default_face_id` fails
+ * here with a 400 rather than falling back to anything.
+ *
  * Note: Ethan's per-objective callbacks are configured on the objective set in
  * Tavus, not here — see README ("Tavus objective callbacks").
  */
@@ -62,7 +69,6 @@ export async function createConversation(
     },
     body: JSON.stringify({
       pal_id: env.tavusPalId,
-      face_id: env.tavusFaceId,
       conversation_name: input.conversationName,
       callback_url: callbackUrl,
       conversational_context:
@@ -89,6 +95,41 @@ export async function createConversation(
   }
 
   return (await response.json()) as CreatedConversation;
+}
+
+/**
+ * Reads the face a PAL is currently configured with, only so `intakes.face_id`
+ * keeps recording what each call actually ran on. Nothing is sent back to
+ * Tavus — the PAL decides the face on its own.
+ *
+ * Best-effort on purpose: the create-conversation response does not carry the
+ * face, so this is a second round trip, and a lead is worth more than an audit
+ * column. Every failure returns null and the intake proceeds. Call it
+ * concurrently with createConversation so it costs no wall-clock time.
+ */
+export async function fetchPalFaceId(palId: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `${TAVUS_API}/pals/${encodeURIComponent(palId)}`,
+      { headers: { "x-api-key": env.tavusApiKey } },
+    );
+
+    if (!response.ok) {
+      console.error(
+        `Tavus get pal failed (${response.status})`,
+        await response.text(),
+      );
+      return null;
+    }
+
+    const body = (await response.json()) as { default_face_id?: unknown };
+    return typeof body.default_face_id === "string"
+      ? body.default_face_id
+      : null;
+  } catch (error) {
+    console.error("Tavus get pal threw", error);
+    return null;
+  }
 }
 
 /** Best-effort cleanup so an abandoned room does not run to max duration. */

@@ -8,29 +8,58 @@ firm doesn't handle so attorneys stop losing time on dead-end calls.
 ## Live resources
 
 Two PALs carry this agent, and **the one production actually serves is
-`p7ac55cbadb2`** — `TAVUS_PAL_ID` and `TAVUS_FACE_ID` are both set in Vercel and
-override the defaults in `src/lib/env.ts`. Every row in `intakes` records the
-`pal_id` and `face_id` the call actually ran on; that column is the authority
-here, not this table.
+`p7ac55cbadb2`** — `TAVUS_PAL_ID` is set in Vercel and overrides the default in
+`src/lib/env.ts`. Every row in `intakes` records the `pal_id` and `face_id` the
+call actually ran on; that column is the authority here, not this table.
 
 | Thing | Serving production (`TAVUS_PAL_ID` in Vercel) | Code default in `src/lib/env.ts` |
 | --- | --- | --- |
 | PAL | `p7ac55cbadb2` — "Ethan" | `p93c8a932419` — "Ethan — Civil Rights Intake v2" |
-| Objective set | `ofc70727fb48e` | `o7fb756385afe` |
-| Face | `rf4703150052` — Charlie | `rf4703150052` — Charlie |
-| Guardrails | 5 records + legacy set `g0cd6325883df` | 6 records, tagged `crv-intake-2026-08` |
+| Objective set | `oe7a1976e9fda` | `o7fb756385afe` |
+| Face | `rf4e9d9790f0` — "Anna - Professional" | `rf4703150052` — "Daniel - Office" |
+| Guardrails | 5 records, set `g71a3def63744` | 6 records, tagged `crv-intake-2026-08` |
 | Magic Canvas | detached — see below | detached — see below |
 | Tools | `end_call` | none |
 | Knowledge base | none attached, on purpose — see below | none |
-| Perception | `raven-1`, no awareness queries | `raven-1`, three awareness queries |
+| Perception | no perception layer set | `raven-1`, three awareness queries |
 
-The face is deliberately the same in three places now — both PALs'
-`default_face_id`, `TAVUS_FACE_ID` in Vercel, and the fallback in
-`src/lib/env.ts` — so the agent cannot change face depending on which of them
-is consulted. `p7ac55cbadb2` was still on Anna until this was synced.
+## The face is set in PAL Maker, and only there
+
+Change it on the PAL and the change is live on the next call. Nothing in this
+repo names a face any more.
+
+It used to. `src/lib/tavus.ts` sent `face_id` in the create-conversation body,
+and a face_id there **overrides the PAL's `default_face_id`** — so the face was
+really pinned by `TAVUS_FACE_ID` in Vercel, and editing it in PAL Maker changed
+nothing at all. That env var is gone from the code, so a stale value left in the
+Vercel project is now inert rather than silently authoritative. Delete it there
+when convenient.
+
+Two consequences worth knowing:
+
+- **A PAL with no `default_face_id` now fails.** Tavus needs a face from the PAL
+  or the request, and the request no longer supplies one, so an unset face is a
+  400 on conversation create rather than a silent fallback.
+- **The voice follows the face.** The TTS layer is on `tavus-auto` with an empty
+  `voice_id`, so each face's own default voice is used. Changing the face in PAL
+  Maker changes how Ethan sounds, not just how he looks.
+
+`intakes.face_id` is now read back from the PAL at call time (`fetchPalFaceId`),
+concurrently with the create so it costs no latency. The lookup is best-effort:
+if it fails the row records a null face and the call still goes ahead.
+
+**The two PALs no longer agree on the face** — `p7ac55cbadb2` is on
+`rf4e9d9790f0`, `p93c8a932419` is still on `rf4703150052`. While the face came
+from an env var that did not matter, because the env var won either way. It
+matters now: unset `TAVUS_PAL_ID` and the agent changes face as well as PAL.
+Sync the fallback PAL, or accept that the fallback looks different.
+
+Note also that the face named "Charlie" throughout earlier revisions of this
+file never existed. `rf4703150052` is **"Daniel - Office"** in Tavus, and always
+was.
 
 Both carry the same system prompt and the same ten-node objective tree
-(`ofc70727fb48e` is a content-identical copy of `o7fb756385afe`), so the design
+(`oe7a1976e9fda` carries the same ten nodes as `o7fb756385afe`), so the design
 notes below describe both. **Change one and you must change the other**, or the
 agent's behaviour starts depending on an environment variable.
 
