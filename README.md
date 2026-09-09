@@ -55,10 +55,12 @@ which echoes our callback URL and therefore the shared secret.
 
 ## The Tavus agent
 
-Ethan. Production serves PAL `p7ac55cbadb2` with face `rf4703150052` ("Charlie")
-and objective set `ofc70727fb48e`, all three set via `TAVUS_PAL_ID` /
-`TAVUS_FACE_ID` in Vercel. A second PAL, `p93c8a932419`, is the fallback baked
-into `src/lib/env.ts` and carries the same prompt and objective tree. **Full
+Ethan. Production serves PAL `p7ac55cbadb2` — set via `TAVUS_PAL_ID` in Vercel —
+with objective set `oe7a1976e9fda`. The **face is not configured here at all**:
+it is whatever `default_face_id` the PAL carries in PAL Maker, currently
+`rf4e9d9790f0` ("Anna - Professional"). A second PAL, `p93c8a932419`, is the
+fallback baked into `src/lib/env.ts` and carries the same prompt and objective
+tree. **Full
 detail, and the reasoning behind every choice, is in
 [`tavus/README.md`](tavus/README.md)** — read that before touching a prompt, and
 note that a prompt change has to be made on both PALs.
@@ -144,7 +146,11 @@ Vercel → Settings → Environment Variables.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API Keys → `service_role` |
 | `PUBLIC_BASE_URL` | Your production origin, e.g. `https://people-machine.vercel.app` |
 | `ADMIN_PASSWORD` | You pick it — this is the only thing guarding the dashboard |
-| `TAVUS_PAL_ID` / `TAVUS_FACE_ID` | Set in production to `p7ac55cbadb2` / `rf4703150052` (Charlie); omitting them falls back to `p93c8a932419` / the same Charlie |
+| `TAVUS_PAL_ID` | Set in production to `p7ac55cbadb2`; omitting it falls back to `p93c8a932419` |
+
+There is deliberately **no `TAVUS_FACE_ID`**. The face is set on the PAL in PAL
+Maker and nowhere else — see [`tavus/README.md`](tavus/README.md). If the Vercel
+project still has that variable set, it does nothing; delete it.
 
 ### `PUBLIC_BASE_URL` is the one that bites
 

@@ -25,13 +25,6 @@ export const env = {
   get tavusPalId() {
     return process.env.TAVUS_PAL_ID || "p93c8a932419";
   },
-  /** Charlie — the same face TAVUS_FACE_ID is set to in Vercel and the same one
-   *  both PALs carry as their default, so an unset env var cannot quietly swap
-   *  the agent's face. The face's own default voice is used, because the TTS
-   *  layer is left on tavus-auto. */
-  get tavusFaceId() {
-    return process.env.TAVUS_FACE_ID || "rf4703150052";
-  },
   /** Shared secret appended to every callback_url we hand Tavus. */
   get tavusWebhookSecret() {
     return required("TAVUS_WEBHOOK_SECRET");

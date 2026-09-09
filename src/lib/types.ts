@@ -1,7 +1,7 @@
 /**
- * The variables Ethan's objective set (crv-intake-v2) emits — `ofc70727fb48e`
- * in production, `o7fb756385afe` on the fallback PAL, the two being
- * content-identical copies of each other.
+ * The variables Ethan's objective set (crv-intake-v2) emits — `oe7a1976e9fda`
+ * in production, `o7fb756385afe` on the fallback PAL, the two carrying the same
+ * ten nodes.
  * Each objective posts `{ conversation_id, objective_name, output_variables }`
  * to our webhook, and every name below maps 1:1 onto a column on `intakes`.
  *
