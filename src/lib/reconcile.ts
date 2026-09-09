@@ -27,6 +27,10 @@ const STUCK_AFTER_MS = 2 * 60 * 1000;
  * that a live call would have reported in by now.
  */
 export function looksStuck(intake: Intake): boolean {
+  // A typed intake has no Tavus conversation to read back, and an abandoned
+  // one sits at in_progress forever by design. Reconciling it would spend the
+  // dashboard's repair budget on rows that can never be repaired this way.
+  if (intake.mode === "text") return false;
   if (intake.status !== "in_progress") return false;
   if (intake.transcript) return false;
   if (intake.ended_at) return true;

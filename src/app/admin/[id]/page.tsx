@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AGENT_NAME } from "@/lib/agent";
 import { supabaseAdmin } from "@/lib/supabase";
 import { looksStuck, reconcileFromTavus } from "@/lib/reconcile";
+import { readTurns } from "@/lib/text-intake";
 import {
   capturedSpineCount,
   INTAKE_SPINE_FIELDS,
@@ -79,6 +80,16 @@ function PerceptionAnalysis({ text }: { text: string }) {
   );
 }
 
+/**
+ * Which front door, and on a typed intake whether the model was reachable.
+ * "text (scripted)" means every question came off the catalog in order because
+ * the model call failed, which the transcript alone will not tell you.
+ */
+function modeLabel(intake: Intake): string {
+  if (intake.mode !== "text") return "Video call";
+  return intake.text_engine === "fallback" ? "Text (scripted)" : "Text";
+}
+
 function Json({ value }: { value: unknown }) {
   return (
     <pre className="overflow-x-auto rounded-xl border border-line bg-surface p-4 font-mono text-xs leading-relaxed">
@@ -120,8 +131,27 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
     ? intake.transcript
     : [];
   const narrative = intake.narrative_summary;
+  const textTurns = intake.mode === "text" ? readTurns(intake) : [];
   const branchFields = populatedBranchFields(intake);
   const legacyFields = populatedLegacyFields(intake);
+
+  // The Tavus identifiers are meaningless on a typed intake, so they are left
+  // off rather than shown as two more dashes.
+  const summaryRows: [string, string][] = [
+    ["Status", intake.status],
+    ["Started", formatDate(intake.started_at)],
+    ["Ended", formatDate(intake.ended_at)],
+    ["Transcript", formatDate(intake.transcript_ready_at)],
+    ["Consent", formatDate(intake.consent_at)],
+    ["Consent version", intake.consent_version ?? "—"],
+    ["How", modeLabel(intake)],
+    ...(intake.mode === "text"
+      ? []
+      : ([
+          ["Conversation", intake.tavus_conversation_id ?? "—"],
+          ["PAL", intake.pal_id ?? "—"],
+        ] as [string, string][])),
+  ];
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-12">
@@ -137,16 +167,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
       </h1>
 
       <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
-        {[
-          ["Status", intake.status],
-          ["Started", formatDate(intake.started_at)],
-          ["Ended", formatDate(intake.ended_at)],
-          ["Transcript", formatDate(intake.transcript_ready_at)],
-          ["Consent", formatDate(intake.consent_at)],
-          ["Consent version", intake.consent_version ?? "—"],
-          ["Conversation", intake.tavus_conversation_id],
-          ["PAL", intake.pal_id ?? "—"],
-        ].map(([label, value]) => (
+        {summaryRows.map(([label, value]) => (
           <div key={label}>
             <dt className="text-xs tracking-wide text-muted uppercase">{label}</dt>
             <dd className="mt-1 break-words">{value}</dd>
@@ -156,7 +177,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
 
       <Section
         title="Collected details"
-        subtitle={`${capturedSpineCount(intake)} of ${INTAKE_SPINE_FIELDS.length} asked on every call. A field stays empty when the call ended before its objective fired, or the caller declined.`}
+        subtitle={`${capturedSpineCount(intake)} of ${INTAKE_SPINE_FIELDS.length} asked on every intake. A field stays empty when the intake ended before it was reached, or the person declined.`}
       >
         <dl className="grid gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
           {INTAKE_SPINE_FIELDS.filter(
@@ -177,7 +198,7 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
       {branchFields.length > 0 && (
         <Section
           title="Branch detail"
-          subtitle="Only the branch this call actually ran. Every other branch's fields are empty by design, so they are not listed."
+          subtitle="Only the branch this intake actually ran. Every other branch's fields are empty by design, so they are not listed."
         >
           <dl className="grid gap-x-6 gap-y-4 rounded-2xl border border-line bg-surface p-6 sm:grid-cols-2">
             {branchFields.map((field) => (
@@ -250,57 +271,95 @@ export default async function IntakeDetailPage(props: PageProps<"/admin/[id]">) 
         )}
       </Section>
 
-      <Section
-        title="Video analysis"
-        subtitle="Tavus's visual read of the caller during the conversation."
-      >
-        {typeof intake.perception_analysis?.analysis === "string" ? (
-          <PerceptionAnalysis text={intake.perception_analysis.analysis} />
-        ) : intake.perception_analysis ? (
-          <Json value={intake.perception_analysis} />
-        ) : (
-          <p className="text-muted">
-            No analysis received. It arrives shortly after the call ends.
-          </p>
-        )}
-      </Section>
+      {intake.mode !== "text" && (
+        <Section
+          title="Video analysis"
+          subtitle="Tavus's visual read of the caller during the conversation."
+        >
+          {typeof intake.perception_analysis?.analysis === "string" ? (
+            <PerceptionAnalysis text={intake.perception_analysis.analysis} />
+          ) : intake.perception_analysis ? (
+            <Json value={intake.perception_analysis} />
+          ) : (
+            <p className="text-muted">
+              No analysis received. It arrives shortly after the call ends.
+            </p>
+          )}
+        </Section>
+      )}
 
-      <Section
-        title="Raw objective output"
-        subtitle="Exactly what Tavus sent, keyed by objective name."
-      >
-        <Json value={intake.objectives ?? {}} />
-      </Section>
-
-      <Section
-        title="Webhook log"
-        subtitle={`${events.length} event${events.length === 1 ? "" : "s"} received.`}
-      >
-        {events.length === 0 ? (
-          <p className="text-muted">No events received for this conversation.</p>
-        ) : (
+      {intake.mode === "text" && (
+        <Section
+          title="Questions asked"
+          subtitle="Every question the intake put, the options it offered, and which engine wrote it. This is where a question that should never have been asked shows up."
+        >
           <div className="space-y-2">
-            {events.map((event) => (
+            {textTurns.map((turn, index) => (
               <details
-                key={event.id}
+                key={index}
                 className="rounded-xl border border-line bg-surface px-4 py-3"
               >
                 <summary className="cursor-pointer text-sm">
-                  <span className="font-medium">
-                    {event.objective_name ?? event.event_type ?? "unknown"}
-                  </span>
+                  <span className="font-medium">{turn.question?.field}</span>
                   <span className="ml-2 text-muted">
-                    {formatDate(event.created_at)}
+                    {turn.answer ? turn.answer.raw : "unanswered"}
                   </span>
+                  {turn.engine === "fallback" && (
+                    <span className="ml-2 text-xs text-danger">scripted</span>
+                  )}
                 </summary>
                 <div className="mt-3">
-                  <Json value={event.payload} />
+                  <Json value={turn} />
                 </div>
               </details>
             ))}
+            {textTurns.length === 0 && (
+              <p className="text-muted">Nothing recorded.</p>
+            )}
           </div>
-        )}
-      </Section>
+        </Section>
+      )}
+
+      {intake.mode !== "text" && (
+        <Section
+          title="Raw objective output"
+          subtitle="Exactly what Tavus sent, keyed by objective name."
+        >
+          <Json value={intake.objectives ?? {}} />
+        </Section>
+      )}
+
+      {intake.mode !== "text" && (
+        <Section
+          title="Webhook log"
+          subtitle={`${events.length} event${events.length === 1 ? "" : "s"} received.`}
+        >
+          {events.length === 0 ? (
+            <p className="text-muted">No events received for this conversation.</p>
+          ) : (
+            <div className="space-y-2">
+              {events.map((event) => (
+                <details
+                  key={event.id}
+                  className="rounded-xl border border-line bg-surface px-4 py-3"
+                >
+                  <summary className="cursor-pointer text-sm">
+                    <span className="font-medium">
+                      {event.objective_name ?? event.event_type ?? "unknown"}
+                    </span>
+                    <span className="ml-2 text-muted">
+                      {formatDate(event.created_at)}
+                    </span>
+                  </summary>
+                  <div className="mt-3">
+                    <Json value={event.payload} />
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
 
       <Section title="Triage">
         <form

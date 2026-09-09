@@ -24,6 +24,25 @@ function formatDate(value: string): string {
   });
 }
 
+/**
+ * Which front door, and for a typed intake whether the model was actually
+ * reachable. A row reading "text (scripted)" completed without a model call,
+ * so its questions came off the catalog in order rather than from the account
+ * in front of it. That is a working intake and a broken feature, and the
+ * difference is invisible from the transcript alone.
+ */
+function ModePill({ intake }: { intake: Intake }) {
+  if (intake.mode !== "text") {
+    return <span className="text-xs text-muted">video</span>;
+  }
+  const scripted = intake.text_engine === "fallback";
+  return (
+    <span className={`text-xs ${scripted ? "text-danger" : "text-muted"}`}>
+      text{scripted ? " (scripted)" : ""}
+    </span>
+  );
+}
+
 function StatusPill({ intake }: { intake: Intake }) {
   const label = intake.status === "completed" ? "Completed" : intake.status === "error" ? "Error" : "In progress";
   const tone =
@@ -141,8 +160,9 @@ export default async function AdminPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Started</th>
                 <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">How</th>
                 <th className="px-4 py-3 font-medium">Contact</th>
-                <th className="px-4 py-3 font-medium">Where</th>
+                <th className="px-4 py-3 font-medium">Matter</th>
                 <th className="px-4 py-3 font-medium">Captured</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium"></th>
@@ -161,13 +181,19 @@ export default async function AdminPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
+                    <ModePill intake={intake} />
+                  </td>
+                  <td className="px-4 py-3">
                     <div>{intake.callback_phone ?? "—"}</div>
                     <div className="text-muted">{intake.email ?? "—"}</div>
                   </td>
                   <td className="px-4 py-3 text-muted">
-                    {[intake.incident_county, intake.incident_state]
-                      .filter(Boolean)
-                      .join(", ") || "—"}
+                    {intake.matter_bucket ?? "—"}
+                    {intake.priority_tier && (
+                      <span className="ml-2 text-xs uppercase">
+                        {intake.priority_tier}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <FieldCount intake={intake} />

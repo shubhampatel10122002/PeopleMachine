@@ -190,6 +190,19 @@ one agency generally forecloses the others.
 city bus rear-ending someone trips the notice-of-claim clock without the caller
 ever having worked for anyone — and without the matter being civil rights at all.
 
+## These decisions bind two agents now
+
+There is a second front door: `/intake/text`, an LLM-driven typed intake for
+people who do not want an avatar. It writes the same columns and carries the
+same standing decisions, in its own system prompt in `src/lib/openai.ts`. **A
+change to any decision below has to be made there too**, or the firm's position
+starts depending on which door someone came through. See
+[`../docs/text-intake.md`](../docs/text-intake.md).
+
+The taxonomy is duplicated too. `matter_bucket` is defined for the text intake
+in `MATTER_BUCKETS` (`src/lib/intake-plan.ts`), because the objective set's own
+copy cannot be read from the repo. Add a bucket in PAL Maker and add it there.
+
 ## Decisions, recorded
 
 **No safety scripting.** The agent mentions no emergency services, police,

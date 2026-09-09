@@ -4,8 +4,8 @@ import { AGENT_NAME } from "@/lib/agent";
 
 const steps = [
   {
-    title: "Talk it through",
-    body: `${AGENT_NAME}, our intake specialist, meets you on video, asks what happened, and then listens — no forms, no time limit, no wrong way to tell it.`,
+    title: "Tell it your way",
+    body: `${AGENT_NAME}, our intake specialist, meets you on video and listens. Not up for a camera? Answer the same questions in writing instead. No forms either way, no time limit, no wrong way to tell it.`,
   },
   {
     title: "We organize it",
@@ -18,11 +18,11 @@ const steps = [
 ];
 
 const asked = [
-  "Your first name, a number and an email to reach you, before the call starts",
+  "Your first name, a number and an email to reach you, before anything else",
   "What happened, in your own words",
-  "Who was responsible — an agency, employer, or landlord",
-  "The state and county where it happened",
-  "Roughly when it happened",
+  "Who was responsible: an agency, an employer, a landlord",
+  "Where and roughly when it happened",
+  "Whether you have already filed anything about it",
   "The best time to reach you",
 ];
 
@@ -51,9 +51,14 @@ export default function Home() {
             >
               Start your intake
             </Link>
+            <Link
+              href="/intake/text"
+              className="rounded-full border border-line px-6 py-3 font-medium transition-colors hover:bg-surface"
+            >
+              Or write it out instead
+            </Link>
             <span className="text-sm text-muted">
-              About 10 minutes &middot; No cost &middot; Two questions, then just
-              talking
+              About 10 minutes &middot; No cost &middot; Camera optional
             </span>
           </div>
         </section>
@@ -82,9 +87,9 @@ export default function Home() {
                 What we&rsquo;ll ask
               </h2>
               <p className="mt-4 leading-relaxed text-muted">
-                Once the conversation starts, you can skip anything you are not
-                comfortable answering, and stop at any point. {AGENT_NAME} will
-                not push.
+                Whichever way you choose, you can skip anything you are not
+                comfortable answering and stop at any point. {AGENT_NAME} will
+                not push, and will not ask the same thing twice.
               </p>
               <ul className="mt-6 space-y-3">
                 {asked.map((item) => (
@@ -105,9 +110,10 @@ export default function Home() {
               <div className="mt-4 space-y-4 leading-relaxed text-muted">
                 <p>
                   {AGENT_NAME} is an AI assistant, not a lawyer, and not a
-                  person &mdash; here to listen and take down what happened
-                  accurately. The conversation is transcribed and the video is
-                  analysed, so our team can review it properly.
+                  person: here to listen and take down what happened
+                  accurately. What you say is stored either way, and on video
+                  the call is transcribed and analysed, so our team can review
+                  it properly.
                 </p>
                 <p>
                   We are building our network of civil rights attorneys right
@@ -130,15 +136,23 @@ export default function Home() {
               Ready when you are
             </h2>
             <p className="mx-auto mt-4 max-w-xl leading-relaxed text-muted">
-              You will need a camera and microphone. Find somewhere you can
-              speak freely.
+              On video you will need a camera and microphone, so find somewhere
+              you can speak freely. In writing you need neither.
             </p>
-            <Link
-              href="/intake"
-              className="mt-8 inline-block rounded-full bg-brand px-6 py-3 font-medium text-white transition-colors hover:bg-brand-hover"
-            >
-              Start your intake
-            </Link>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/intake"
+                className="rounded-full bg-brand px-6 py-3 font-medium text-white transition-colors hover:bg-brand-hover"
+              >
+                Talk it through on video
+              </Link>
+              <Link
+                href="/intake/text"
+                className="rounded-full border border-line px-6 py-3 font-medium transition-colors hover:bg-paper"
+              >
+                Write it out instead
+              </Link>
+            </div>
           </div>
         </section>
       </main>

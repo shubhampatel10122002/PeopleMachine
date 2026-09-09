@@ -1,24 +1,11 @@
 import { NextResponse } from "next/server";
+import { readContact } from "@/lib/contact";
 import { CONSENT_VERSION, env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createConversation, fetchPalConfig } from "@/lib/tavus";
 
-function digitCount(value: string): number {
-  return (value.match(/\d/g) ?? []).length;
-}
-
-/** Mirrors the check on the form. Deliberately loose — see IntakeClient. */
-function looksReachable(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
 export async function POST(request: Request) {
-  let body: {
-    consent?: unknown;
-    firstName?: unknown;
-    callbackPhone?: unknown;
-    email?: unknown;
-  };
+  let body: Record<string, unknown>;
   try {
     body = await request.json();
   } catch {
@@ -32,32 +19,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const firstName =
-    typeof body.firstName === "string" ? body.firstName.trim() : "";
-  const callbackPhone =
-    typeof body.callbackPhone === "string" ? body.callbackPhone.trim() : "";
-  const email = typeof body.email === "string" ? body.email.trim() : "";
-
-  if (!firstName) {
-    return NextResponse.json(
-      { error: "Please tell us your first name." },
-      { status: 400 },
-    );
+  // Shared with the text intake so the two front doors cannot drift into
+  // accepting different things. See src/lib/contact.ts.
+  const parsed = readContact(body);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-
-  if (digitCount(callbackPhone) < 7) {
-    return NextResponse.json(
-      { error: "Please enter a phone number we can reach you on." },
-      { status: 400 },
-    );
-  }
-
-  if (!looksReachable(email)) {
-    return NextResponse.json(
-      { error: "Please enter an email address we can reach you on." },
-      { status: 400 },
-    );
-  }
+  const { firstName, callbackPhone, email } = parsed.contact;
 
   try {
     const startedAt = new Date();
@@ -90,9 +58,9 @@ export async function POST(request: Request) {
         status: "in_progress",
         // Captured on the form, so the lead is usable even if they hang up
         // before the agent gets to anything else.
-        first_name: firstName.slice(0, 120),
-        callback_phone: callbackPhone.slice(0, 64),
-        email: email.slice(0, 320),
+        first_name: firstName,
+        callback_phone: callbackPhone,
+        email,
         consent_at: startedAt.toISOString(),
         consent_version: CONSENT_VERSION,
         started_at: startedAt.toISOString(),
