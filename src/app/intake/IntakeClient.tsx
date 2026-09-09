@@ -1,6 +1,7 @@
 "use client";
 
 import type { DailyCall } from "@daily-co/daily-js";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AGENT_NAME } from "@/lib/agent";
@@ -278,6 +279,20 @@ export function IntakeClient() {
       >
         {busy ? "Connecting…" : "Start the conversation"}
       </button>
+
+      {/* Offered here rather than only on the landing page: this is the moment
+          someone finds out they need a camera, and it is the moment they leave
+          if there is no other way through. */}
+      <p className="mt-6 border-t border-line pt-6 text-sm text-muted">
+        Not up for being on camera?{" "}
+        <Link
+          href="/intake/text"
+          className="text-brand underline underline-offset-4"
+        >
+          Answer in writing instead
+        </Link>
+        . Same questions, no video.
+      </p>
     </div>
   );
 }

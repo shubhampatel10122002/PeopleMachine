@@ -189,10 +189,27 @@ export type Intake = {
   id: string;
   created_at: string;
   updated_at: string;
-  tavus_conversation_id: string;
+  /** Null on a typed intake, which has no Tavus conversation behind it. */
+  tavus_conversation_id: string | null;
   tavus_conversation_url: string | null;
   pal_id: string | null;
   face_id: string | null;
+  /**
+   * Which front door. Both write the same field columns, so nothing that reads
+   * an intake has to branch on this; it exists so /admin can say which it was,
+   * and so the Tavus reconcile can skip rows that were never calls.
+   */
+  mode: "voice" | "text";
+  /** Bearer token for /api/intake/text/turn. Null on a call. */
+  session_token: string | null;
+  /**
+   * The typed conversation as a machine record: `TextTurn[]` from
+   * `src/lib/text-intake.ts`, left loose here so the field catalog can import
+   * this file without importing itself back.
+   */
+  text_turns: unknown;
+  /** Which engine produced the last typed question. Null on a call. */
+  text_engine: "openai" | "fallback" | null;
   status: "in_progress" | "completed" | "error";
   consent_at: string | null;
   consent_version: string | null;

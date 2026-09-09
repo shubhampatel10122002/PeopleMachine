@@ -38,6 +38,26 @@ export const env = {
   get adminPassword() {
     return required("ADMIN_PASSWORD");
   },
+  /** Drives the text intake at /intake/text. Nothing else in the app reads it. */
+  get openaiApiKey() {
+    return required("OPENAI_API_KEY");
+  },
+  /**
+   * Optional. Scopes usage and billing to one OpenAI project rather than the
+   * account default, which is what makes the intake's spend legible on its own.
+   */
+  get openaiProjectId() {
+    return process.env.OPENAI_PROJECT_ID || null;
+  },
+  /**
+   * Overridable so a model can be swapped without a code change, but the
+   * default is the model the flow was written for. It reasons before it
+   * answers, which is what lets it classify a matter silently while sounding
+   * like a person — see src/lib/openai.ts.
+   */
+  get openaiModel() {
+    return process.env.OPENAI_MODEL || "gpt-5.6-sol";
+  },
   /**
    * Where Tavus should send conversation-level webhooks. This must be an origin
    * Tavus can actually reach, and getting it wrong is silent: the callbacks are
@@ -65,3 +85,11 @@ export const env = {
 };
 
 export const CONSENT_VERSION = "2026-08-19";
+
+/**
+ * The text intake agrees to different things: no camera, no microphone, and no
+ * video analysis, but the same AI disclosure, storage and non-engagement terms.
+ * Versioned separately so `intakes.consent_version` still says exactly which
+ * words a given person was shown.
+ */
+export const TEXT_CONSENT_VERSION = "text-2026-09-09";

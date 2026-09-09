@@ -3,20 +3,37 @@
 Plaintiffs tell their story to an AI intake specialist; the structured result
 lands in Supabase and shows up in an admin dashboard.
 
-This is step one: the public site, the Tavus intake conversation, the database,
+This is step one: the public site, the two intake conversations, the database,
 and the dashboard. Attorney accounts and matching come later.
 
-## How it works
+## Two front doors, one row
+
+There are two ways to give an intake, and they write the same columns.
 
 ```
-/intake  ──POST /api/intake/start──▶  Tavus: create conversation (the PAL)
+/intake       ──POST /api/intake/start──▶  Tavus: create conversation (the PAL)
    │                                      │
    └─ first name + phone + email ────────▶├─ conversation_url ──▶ Daily SDK join
       (context + greeting)                │
-                                          └─ webhooks ──▶ /api/tavus/webhook ──▶ Supabase
-                                                              │
-                                                            /admin
+                                          └─ webhooks ──▶ /api/tavus/webhook ──┐
+                                                                               │
+/intake/text  ──POST /api/intake/text/start──▶ row + first question            ├─▶ Supabase
+   │                                                                           │      │
+   └─ one answer ──POST /api/intake/text/turn──▶ OpenAI Responses ─────────────┘    /admin
 ```
+
+The **video intake** is the Tavus avatar. The **text intake** is for someone who
+does not want to be on camera: an LLM decides the next question from what they
+have already said, offers clickable answers, and never asks the same thing
+twice. Full detail, and the reasoning behind every choice, is in
+[`docs/text-intake.md`](docs/text-intake.md).
+
+Both write `matter_bucket`, the two fuses, the branch fields, `priority_tier`
+and a `transcript` in the same shape, so /admin and the future extractor read
+one row shape and never learn there are two front doors. `intakes.mode` says
+which door a given row came through.
+
+## How the video intake works
 
 Name, phone and email are collected on the page **before** the call, not by
 the agent. Typed contact details beat transcribed ones, and it means an
@@ -57,6 +74,30 @@ so the webhook merges rather than assigns: a later fire carrying `unknown` or
 Every payload is also written verbatim to `intake_events` — minus `webhook_url`,
 which echoes our callback URL and therefore the shared secret.
 
+## The text intake
+
+`/intake/text`, for someone who does not want an avatar. `gpt-5.6-sol` through
+the OpenAI **Responses API** picks the next question from what the person has
+already said, offers three to seven clickable answers with a free-text way out,
+and writes the same columns a call does.
+
+The division of labour is the design: the model writes the dialogue, and the
+code decides what is true. Which fields are still open, which branch the matter
+took and whether the intake may close are all settled from the row, and a
+question for a field that is not open is discarded in favour of one that is. So
+a model that drifts costs a worse sentence, never a repeated question. When
+OpenAI cannot be reached at all the intake still completes, walking the
+question catalog unaided, and `intakes.text_engine` records that it did.
+
+**Read [`docs/text-intake.md`](docs/text-intake.md) before changing any of it**,
+particularly before moving the question catalog into the system prompt or
+"fixing" the schema to use nullable fields.
+
+The firm's standing decisions carry over unchanged from the call agent: no
+crisis resources, never decline a matter, no callback SLA, no merits
+evaluation, never read the account back. They are in the system prompt in
+`src/lib/openai.ts`.
+
 ## The Tavus agent
 
 Kelly. Production serves PAL `p7ac55cbadb2`, set via `TAVUS_PAL_ID` in Vercel.
@@ -87,12 +128,14 @@ Twelve matter buckets are recorded as data (`matter_bucket`); only seven are
 branch targets, because a twelve-way plain-English routing decision is where
 misrouting happens.
 
-**Changing the flow means changing two places.** If you add a variable to an
+**Changing the flow means changing three places.** If you add a variable to an
 objective in Tavus, add the matching column to `intakes` and the name to
 `INTAKE_SPINE_FIELDS` or `INTAKE_BRANCH_FIELDS` in `src/lib/types.ts` — the
 webhook only maps names on that list. The split matters: spine fields are asked
 on every call and an empty one is signal, while branch fields are null on nearly
-every row by design and must never count toward completeness.
+every row by design and must never count toward completeness. The third place is
+`QUESTION_PLAN` in `src/lib/intake-plan.ts`, or the text intake will keep
+collecting the old set and the two front doors will quietly diverge.
 
 `first_name`, `callback_phone` and `email` are written at `/api/intake/start`
 from the form rather than by a callback. The PAL's prompt says all three are
@@ -107,6 +150,11 @@ from a post-call extractor running over the merged bundle. That bundle is
 already durable — `transcript`, `perception_analysis`, `objectives`, and
 `intake_events` — so nothing is being lost in the meantime, it just is not
 structured yet.
+
+A typed intake lands in the same place, with `text_turns` alongside the
+transcript: which question was asked, which options were offered, and what was
+chosen. That is strictly more provenance than a call leaves, and the extractor
+should read it rather than re-parsing the transcript.
 
 Two facts that make this safe, both measured rather than assumed:
 `application.transcription_ready` arrived **1–5 seconds after call end on every
@@ -134,7 +182,13 @@ Two consequences worth keeping:
 ## Database
 
 Supabase project `eeytqmshggwyrchixdal`, schema in `supabase/migrations/`
-(already applied).
+(already applied, `0004` included).
+
+`0004` is what lets one table hold both kinds of intake: `mode`, the text
+intake's `session_token` / `text_turns` / `text_engine`, and
+`tavus_conversation_id` made nullable because a typed intake has no
+conversation behind it. Everything else is additive, and `mode` defaults to
+`voice`, so existing rows are untouched.
 
 RLS is enabled on both tables with **no policies**, so the anon key can read
 nothing. All access goes through the server with the service role key.
@@ -153,6 +207,9 @@ Vercel → Settings → Environment Variables.
 | `PUBLIC_BASE_URL` | Your production origin, e.g. `https://people-machine.vercel.app` |
 | `ADMIN_PASSWORD` | You pick it — this is the only thing guarding the dashboard |
 | `TAVUS_PAL_ID` | Set in production to `p7ac55cbadb2`; omitting it falls back to `p93c8a932419` |
+| `OPENAI_API_KEY` | OpenAI dashboard. Drives the text intake and nothing else. **Not committed**: unlike `TAVUS_API_KEY`, GitHub push protection rejects OpenAI key patterns outright, so set it in Vercel and paste it into your local `.env` |
+| `OPENAI_PROJECT_ID` | Optional. Scopes usage to one project, e.g. `proj_g9xNxYSKiVZEikeFmoCgfNbc` |
+| `OPENAI_MODEL` | Optional override. Defaults to `gpt-5.6-sol` |
 
 There is deliberately **no `TAVUS_FACE_ID`**. The face is set on the PAL in PAL
 Maker and nowhere else — see [`tavus/README.md`](tavus/README.md). If the Vercel
@@ -223,16 +280,24 @@ Tavus webhooks cannot reach `localhost`. To exercise the full loop locally,
 expose the port (`ngrok http 3000`), set `PUBLIC_BASE_URL` to the tunnel URL,
 and point the objective callbacks at it.
 
+The text intake needs no tunnel: it is request/response, so `/intake/text`
+works against `localhost` as soon as `OPENAI_API_KEY` and the Supabase keys are
+set. Without OpenAI credit it still runs, walking the scripted question list
+instead of adapting; /admin marks those rows `text (scripted)`.
+
 ## Routes
 
 | Route | Purpose |
 | --- | --- |
 | `/` | Public landing page |
-| `/intake` | Name, phone, email, consent, then the conversation with the agent |
+| `/intake` | Name, phone, email, consent, then the video conversation with the agent |
+| `/intake/text` | The same, in writing: one LLM-chosen question at a time, mostly clickable |
 | `/intake/thanks` | Post-conversation confirmation |
 | `/admin` | Intake list (password-gated) |
 | `/admin/[id]` | One intake: fields, narrative, transcript, video analysis, raw JSON, triage notes |
 | `/api/tavus/webhook` | Everything Tavus sends back |
+| `/api/intake/text/start` | Opens a typed intake and returns the first question |
+| `/api/intake/text/turn` | One answer in, the next question out |
 
 The admin gate is a single shared password (`ADMIN_PASSWORD`) checked in
 `src/proxy.ts`, which sets an HMAC cookie. No accounts, no signup. It fails
